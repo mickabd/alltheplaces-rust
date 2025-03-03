@@ -11,44 +11,31 @@ use walkdir::WalkDir;
 pub fn get_file_url() -> Result<String, Box<dyn Error>> {
     let atp_base_url = String::from("https://data.alltheplaces.xyz/runs/latest/info_embed.html");
     let body = reqwest::blocking::get(atp_base_url)?.text()?;
-    let re = Regex::new("href=[\"\'](https?://[^\"\']+?)[\"\']").unwrap();
+    let re = Regex::new("href=[\"\'](https?://[^\"\']+?)[\"\']")?;
     let captures = match re.captures(&body) {
         Some(captures) => captures,
-        None => return Err("Could not find the latest URL download link!".into()),
+        None => return Err("could not find the latest URL download link!".into()),
     };
     // The first captures is always the full string containing the match.
     let url = match captures.get(1) {
         Some(url) => url.as_str(),
-        None => return Err("Capture group not found".into()),
+        None => return Err("capture group not found".into()),
     };
     Ok(url.to_string())
 }
 
-pub fn download_atp_data(url: String, output_path: &String) {
+pub fn download_atp_data(url: String, output_path: &String) -> Result<(), Box<dyn Error>> {
     let path = Path::new(&output_path);
-    let display = path.display();
-
-    let mut file = match File::create(path) {
-        Err(why) => panic!("couldn't create {}: {}", display, why),
-        Ok(file) => {
-            println!("File successfully created to {}", display);
-            file
-        }
-    };
-
+    let mut file = File::create(path)?;
     println!("Getting the zip file from {}", url);
     let client = reqwest::blocking::Client::builder()
         .timeout(Some(Duration::new(120, 0)))
-        .build()
-        .unwrap();
-
+        .build()?;
     let req = client.get(&url).build().unwrap();
     let resp = client.execute(req).unwrap().bytes().unwrap();
     println!("Got file from {}", url);
-    match file.write_all(&resp) {
-        Err(why) => panic!("couldn't write to {}: {}", display, why),
-        Ok(_) => println!("succesfully wrote to {}", display),
-    }
+    file.write_all(&resp)?;
+    Ok(())
 }
 
 pub fn unzip(file_path: String, output_directory: String) {
@@ -68,13 +55,16 @@ pub fn unzip(file_path: String, output_directory: String) {
     };
 }
 
-pub fn get_valid_files(directory: String) -> Vec<String> {
+pub fn get_valid_files(directory: String) -> Result<Vec<String>, Box<dyn Error>> {
     let mut files: Vec<String> = vec![];
     for entry in WalkDir::new(directory).into_iter().filter_map(|f| f.ok()) {
-        if entry.metadata().unwrap().len() > 0 {
+        if entry.metadata().unwrap().is_file() && entry.metadata().unwrap().len() > 0 {
             files.push(entry.path().display().to_string());
         }
     }
+    if files.len() == 0 {
+        return Err("No files found".into());
+    }
     files.sort();
-    files
+    Ok(files)
 }

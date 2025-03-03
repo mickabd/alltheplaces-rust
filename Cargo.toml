@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+geojson = "0.24.2"
 regex = "1.11.1"
 reqwest = { version = "0.12.12", features = ["blocking"] }
 walkdir = "2.5.0"
