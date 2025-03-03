@@ -9,13 +9,15 @@ use std::path::Path;
 use std::time::Duration;
 
 use regex::Regex;
+use walkdir::WalkDir;
 
 fn main() {
     let file_url = get_file_url().unwrap();
     let output_path = String::from("temp/output.zip");
     let output_directory = String::from("temp/");
     download_atp_data(file_url, &output_path).unwrap();
-    unzip(output_path, output_directory)
+    unzip(output_path, output_directory);
+    let mut valid_files = get_valid_files(String::from("temp/output/"));
 }
 
 fn get_file_url() -> Result<String, Box<dyn Error>> {
@@ -62,16 +64,30 @@ fn download_atp_data(url: String, output_path: &String) -> Result<(), Box<dyn st
     Ok(())
 }
 
-fn unzip(path: String, output_directory: String) {
-    let file = File::open(&path).unwrap();
+fn unzip(file_path: String, output_directory: String) {
+    let file = File::open(&file_path).unwrap();
     let mut archive = zip::ZipArchive::new(file).unwrap();
     match archive.extract(&output_directory) {
         Err(why) => {
             panic!(
                 "couldn't extract {} to {}, error: {}",
-                path, output_directory, why
+                file_path, output_directory, why
             )
         }
-        Ok(_) => println!("{} successfully extracted to {}", path, output_directory),
+        Ok(_) => println!(
+            "{} successfully extracted to {}",
+            file_path, output_directory
+        ),
     };
+}
+
+fn get_valid_files(directory: String) -> Vec<String> {
+    let mut files: Vec<String> = vec![];
+    for entry in WalkDir::new(directory).into_iter().filter_map(|f| f.ok()) {
+        if entry.metadata().unwrap().len() > 0 {
+            files.push(entry.path().display().to_string());
+        }
+    }
+    files.sort();
+    files
 }
