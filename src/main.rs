@@ -1,6 +1,5 @@
 pub mod files;
 
-extern crate geojson;
 extern crate reqwest;
 extern crate zip;
 
@@ -18,10 +17,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     unzip(output_path, output_directory);
 
     let valid_files = get_valid_files(String::from("temp/output/"))?;
-    println!("{}", valid_files.len());
+    println!("There is {} valid files to ingest", valid_files.len());
 
-    let first_file = valid_files.get(0).unwrap(); // It's safe to unwrap because
-    let contents = fs::read_to_string(first_file)?.parse::<GeoJson>()?;
-    println!("{}", contents.to_string());
+    for file in &valid_files {
+        match fs::read_to_string(file)?.parse::<GeoJson>() {
+            Err(why) => println!("Error parsing {}, {}", file, why),
+            Ok(_) => (),
+        };
+    }
     Ok(())
 }
