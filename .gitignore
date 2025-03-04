@@ -23,3 +23,5 @@ Cargo.lock
 # Temp folder
 temp/
 tmp/
+
+.DS_Store
