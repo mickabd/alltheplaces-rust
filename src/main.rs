@@ -8,10 +8,7 @@ fn main() {
     let output_directory = String::from("temp/");
     let files_directory = String::from("temp/output/");
 
-    match download_atp_data(file_url, &output_path) {
-        Err(why) => panic!("error downloading the atp zip file: {}", why),
-        Ok(_) => (),
-    };
+    download_atp_data(file_url, &output_path);
     unzip(output_path, output_directory);
     remove_not_usable_files(files_directory);
 }

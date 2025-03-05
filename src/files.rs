@@ -2,7 +2,6 @@ extern crate reqwest;
 extern crate zip;
 
 use core::panic;
-use std::error::Error;
 use std::fs::{read_to_string, remove_file, File};
 use std::io::Write;
 use std::path::Path;
@@ -36,18 +35,34 @@ pub fn get_file_url() -> String {
     url.to_string()
 }
 
-pub fn download_atp_data(url: String, output_path: &String) -> Result<(), Box<dyn Error>> {
+pub fn download_atp_data(url: String, output_path: &String) {
     let path = Path::new(&output_path);
-    let mut file = File::create(path)?;
+    let mut file = match File::create(path) {
+        Err(why) => panic!("not able to create the file {}: {}", output_path, why),
+        Ok(value) => value,
+    };
     println!("Getting the zip file from {}", url);
     let client = reqwest::blocking::Client::builder()
         .timeout(Some(Duration::new(120, 0)))
-        .build()?;
-    let req = client.get(&url).build()?;
-    let resp = client.execute(req)?.bytes()?;
+        .build()
+        .unwrap();
+
+    let req = match client.get(&url).build() {
+        Err(why) => panic!(
+            "error when building the request to get the zip file at {}: {}",
+            url, why
+        ),
+        Ok(value) => value,
+    };
+
+    let resp = match client.execute(req) {
+        Err(why) => panic!("error requesting the zip file at {}: {}", url, why),
+        Ok(value) => value,
+    }
+    .bytes()
+    .unwrap();
     println!("Got file from {}", url);
-    file.write_all(&resp)?;
-    Ok(())
+    file.write_all(&resp).unwrap();
 }
 
 pub fn unzip(file_path: String, output_directory: String) {
