@@ -12,20 +12,28 @@ use geojson::GeoJson;
 use regex::Regex;
 use walkdir::{DirEntry, WalkDir};
 
-pub fn get_file_url() -> Result<String, Box<dyn Error>> {
+pub fn get_file_url() -> String {
     let atp_base_url = String::from("https://data.alltheplaces.xyz/runs/latest/info_embed.html");
-    let body = reqwest::blocking::get(atp_base_url)?.text()?;
-    let re = Regex::new("href=[\"\'](https?://[^\"\']+?)[\"\']")?;
+    let request = match reqwest::blocking::get(&atp_base_url) {
+        Err(why) => panic!("not able to reach the url {}, {}", atp_base_url, why),
+        Ok(value) => value,
+    };
+    let body = match request.text() {
+        Err(why) => panic!("not able to parse the body of the request, {}", why),
+        Ok(value) => value,
+    };
+    // unwrap is ok because it's a harcoded value
+    let re = Regex::new("href=[\"\'](https?://[^\"\']+?)[\"\']").unwrap();
     let captures = match re.captures(&body) {
         Some(captures) => captures,
-        None => return Err("could not find the latest URL download link!".into()),
+        None => panic!("could not find the latest URL download link!"),
     };
     // The first captures is always the full string containing the match.
     let url = match captures.get(1) {
         Some(url) => url.as_str(),
-        None => return Err("capture group not found".into()),
+        None => panic!("capture group not found"),
     };
-    Ok(url.to_string())
+    url.to_string()
 }
 
 pub fn download_atp_data(url: String, output_path: &String) -> Result<(), Box<dyn Error>> {
