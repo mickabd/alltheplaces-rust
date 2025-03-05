@@ -1,12 +1,16 @@
+extern crate reqwest;
+extern crate zip;
+
 use core::panic;
 use std::error::Error;
-use std::fs::File;
+use std::fs::{read_to_string, remove_file, File};
 use std::io::Write;
 use std::path::Path;
 use std::time::Duration;
 
+use geojson::GeoJson;
 use regex::Regex;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 pub fn get_file_url() -> Result<String, Box<dyn Error>> {
     let atp_base_url = String::from("https://data.alltheplaces.xyz/runs/latest/info_embed.html");
@@ -55,16 +59,46 @@ pub fn unzip(file_path: String, output_directory: String) {
     };
 }
 
-pub fn get_valid_files(directory: String) -> Result<Vec<String>, Box<dyn Error>> {
-    let mut files: Vec<String> = vec![];
-    for entry in WalkDir::new(directory).into_iter().filter_map(|f| f.ok()) {
-        if entry.metadata().unwrap().is_file() && entry.metadata().unwrap().len() > 0 {
-            files.push(entry.path().display().to_string());
+fn is_file_empty(entry: &DirEntry) -> Result<bool, Box<dyn Error>> {
+    let metadata = entry.metadata()?;
+    let display = entry.path().display().to_string();
+    let is_empty = metadata.is_file() && metadata.len() == 0;
+    if is_empty {
+        println!("{} is empty.", display);
+    }
+    Ok(is_empty)
+}
+
+fn is_file_broken(entry: &DirEntry) -> Result<bool, Box<dyn Error>> {
+    let display = entry.path().display().to_string();
+    println!("trying to parse {} into a geojson", display);
+    match read_to_string(&display)?.parse::<GeoJson>() {
+        Err(why) => {
+            println!("error parsing {}, {}", display, why);
+            Ok(true)
         }
+        Ok(_) => Ok(false),
     }
-    if files.len() == 0 {
-        return Err("No files found".into());
+}
+
+pub fn remove_not_usable_files(directory: String) {
+    for entry in WalkDir::new(directory)
+        .max_depth(1)
+        .into_iter()
+        .filter_map(|f| f.ok())
+        .filter(
+            |e| match (e.path().is_file(), is_file_empty(e), is_file_broken(e)) {
+                (is_file, Ok(empty), Ok(broken)) => is_file && (empty || broken),
+                _ => false,
+            },
+        )
+    {
+        let display = entry.path().display().to_string();
+        println!("starting deletion of {}.", display);
+        match remove_file(&display) {
+            Err(why) => panic!("not able to delete the file: {}", why),
+            Ok(_) => (),
+        };
+        println!("{} has been deleted.", display);
     }
-    files.sort();
-    Ok(files)
 }
