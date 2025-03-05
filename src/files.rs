@@ -35,8 +35,8 @@ pub fn download_atp_data(url: String, output_path: &String) -> Result<(), Box<dy
     let client = reqwest::blocking::Client::builder()
         .timeout(Some(Duration::new(120, 0)))
         .build()?;
-    let req = client.get(&url).build().unwrap();
-    let resp = client.execute(req).unwrap().bytes().unwrap();
+    let req = client.get(&url).build()?;
+    let resp = client.execute(req)?.bytes()?;
     println!("Got file from {}", url);
     file.write_all(&resp)?;
     Ok(())
@@ -59,25 +59,41 @@ pub fn unzip(file_path: String, output_directory: String) {
     };
 }
 
-fn is_file_empty(entry: &DirEntry) -> Result<bool, Box<dyn Error>> {
-    let metadata = entry.metadata()?;
+fn is_file_empty(entry: &DirEntry) -> bool {
     let display = entry.path().display().to_string();
+    let metadata = match entry.metadata() {
+        Err(why) => {
+            println!("error reading metadata for {}, {}", display, why);
+            return true;
+        }
+        Ok(value) => value,
+    };
     let is_empty = metadata.is_file() && metadata.len() == 0;
     if is_empty {
         println!("{} is empty.", display);
     }
-    Ok(is_empty)
+    is_empty
 }
 
-fn is_file_broken(entry: &DirEntry) -> Result<bool, Box<dyn Error>> {
+fn is_file_broken(entry: &DirEntry) -> bool {
     let display = entry.path().display().to_string();
     println!("trying to parse {} into a geojson", display);
-    match read_to_string(&display)?.parse::<GeoJson>() {
+    let string_value = match read_to_string(&display) {
+        Err(why) => {
+            println!("error reading {}, {}", display, why);
+            return true;
+        }
+        Ok(value) => value,
+    };
+    match string_value.parse::<GeoJson>() {
         Err(why) => {
             println!("error parsing {}, {}", display, why);
-            Ok(true)
+            true
         }
-        Ok(_) => Ok(false),
+        Ok(_) => {
+            println!("successfully parsed {} into a geojson", display);
+            false
+        }
     }
 }
 
@@ -86,12 +102,7 @@ pub fn remove_not_usable_files(directory: String) {
         .max_depth(1)
         .into_iter()
         .filter_map(|f| f.ok())
-        .filter(
-            |e| match (e.path().is_file(), is_file_empty(e), is_file_broken(e)) {
-                (is_file, Ok(empty), Ok(broken)) => is_file && (empty || broken),
-                _ => false,
-            },
-        )
+        .filter(|e| e.path().is_file() && (is_file_empty(e) || is_file_broken(e)))
     {
         let display = entry.path().display().to_string();
         println!("starting deletion of {}.", display);
