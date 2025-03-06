@@ -1,14 +1,18 @@
-pub mod files;
-
-use files::{download_atp_data, get_file_url, remove_not_usable_files, unzip};
+pub mod download;
+pub mod model;
+pub mod poi;
+pub mod unzip;
+use download::download_atp_data;
+use poi::extract_features_from_files;
+use unzip::unzip;
 
 fn main() {
-    let file_url = get_file_url();
     let output_path = String::from("temp/output.zip");
-    let output_directory = String::from("temp/");
+    let unzip_directory = String::from("temp/");
     let files_directory = String::from("temp/output/");
+    let output_directory = String::from("temp/curated/");
 
-    download_atp_data(file_url, &output_path);
-    unzip(output_path, output_directory);
-    remove_not_usable_files(files_directory);
+    download_atp_data(&output_path);
+    unzip(output_path, unzip_directory);
+    extract_features_from_files(&files_directory, &output_directory);
 }
