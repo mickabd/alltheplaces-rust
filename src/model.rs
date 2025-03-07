@@ -70,6 +70,7 @@ pub struct POI {
     pub brand_wikidata_id: Option<String>,
     pub website: Option<String>,
     pub opening_hours: Option<String>,
+    pub phone: Option<String>,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
     pub city: Option<String>,

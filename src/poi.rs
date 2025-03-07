@@ -85,6 +85,7 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
         brand_wikidata_id: feature.properties.brand_wikidata_id,
         spider_id: feature.properties.spider_id,
         opening_hours: feature.properties.opening_hours,
+        phone: feature.properties.phone,
         full_address: feature.properties.address_full,
         house_number: feature.properties.address_housenumber,
         street_name: feature.properties.address_street,
