@@ -1,3 +1,4 @@
+use std::fs;
 use std::io::Write;
 use std::{fs::File, path::Path, time::Duration};
 
@@ -27,6 +28,7 @@ fn get_file_url() -> String {
 pub fn download_atp_data(output_path: &String) {
     let url = get_file_url();
     let path = Path::new(&output_path);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
     let mut file =
         File::create(path).expect(format!("not able to create the file {}", output_path).as_str());
     println!("Getting the zip file from {}", url);
