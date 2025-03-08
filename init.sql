@@ -1,6 +1,6 @@
 CREATE TABLE poi (
     id SERIAL PRIMARY KEY,
-    spider_id INT NOT NULL,
+    spider_id VARCHAR(255) NOT NULL,
     poi_name VARCHAR(255),
     brand VARCHAR(255),
     brand_wikidata_id VARCHAR(255),
