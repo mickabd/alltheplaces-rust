@@ -1,3 +1,6 @@
+extern crate geo;
+
+use geo::geometry::Point;
 use serde::{Deserialize, Serialize};
 
 // https://github.com/alltheplaces/alltheplaces/blob/master/DATA_FORMAT.md
@@ -71,8 +74,7 @@ pub struct POI {
     pub website: Option<String>,
     pub opening_hours: Option<String>,
     pub phone: Option<String>,
-    pub longitude: Option<f64>,
-    pub latitude: Option<f64>,
+    pub point: Option<Point>,
     pub city: Option<String>,
     pub zipcode: Option<String>,
     pub house_number: Option<String>,

@@ -1,49 +1,31 @@
 extern crate geojson;
 extern crate url;
 
-use crate::files::{is_file_empty, read_geojson, write_to_csv};
+use crate::files::{is_file_empty, read_geojson};
 use crate::model::{Feature, POI};
+use geo::Point;
 use geojson::JsonValue;
 use std::path::Display;
 use url::Url;
-use walkdir::WalkDir;
+use walkdir::DirEntry;
 
-pub fn extract_features_from_files(input_path: &str, output_path: &str) {
-    for entry in WalkDir::new(input_path)
-        .max_depth(1)
-        .into_iter()
-        .filter_map(|f| f.ok())
-        .filter(|e| e.path().is_file())
-    {
-        let display = entry.path().display();
-        if is_file_empty(&entry) {
-            println!("the file {} is empty, skipping it", display);
-            continue;
-        }
-        let content: JsonValue = match read_geojson(&entry) {
-            Err(why) => {
-                println!(
-                    "the file {} is broken, skipping it. Error is: {}",
-                    display, why
-                );
-                continue;
-            }
-            Ok(value) => value.to_json_value(),
-        };
-        let pois = build_pois(content, &display);
-        let file_name = entry
-            .path()
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .split(".")
-            .collect::<Vec<&str>>()[0];
-
-        let output_file = format!("{}/{}.csv", output_path, file_name);
-        write_to_csv(pois, &output_file)
-            .expect(format!("error while writing to {}", output_file).as_str());
+pub fn extract_features(input_path: DirEntry) -> Option<Vec<POI>> {
+    let display = input_path.path().display();
+    if is_file_empty(&input_path) {
+        println!("the file {} is empty, skipping it", display);
+        return None;
     }
+    let content: JsonValue = match read_geojson(&input_path) {
+        Err(why) => {
+            println!(
+                "the file {} is broken, skipping it. Error is: {}",
+                display, why
+            );
+            return None;
+        }
+        Ok(value) => value.to_json_value(),
+    };
+    Some(build_pois(content, &display))
 }
 
 fn build_pois(content: JsonValue, file_path: &Display) -> Vec<POI> {
@@ -76,7 +58,7 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
     };
     let poi_name = parse_names(&feature);
     let website = parse_url(&feature);
-    let (longitude, latitude) = parse_coordinates(&feature);
+    let point = parse_coordinates(&feature);
 
     Some(POI {
         poi_name,
@@ -94,8 +76,7 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
         zipcode: feature.properties.address_postcode,
         state: feature.properties.address_state,
         country: feature.properties.address_country,
-        longitude,
-        latitude,
+        point,
     })
 }
 
@@ -132,9 +113,9 @@ fn parse_url(feature: &Feature) -> Option<String> {
     None
 }
 
-fn parse_coordinates(feature: &Feature) -> (Option<f64>, Option<f64>) {
+fn parse_coordinates(feature: &Feature) -> Option<Point> {
     match &feature.geometry {
-        Some(value) => return (Some(value.coordinates[0]), Some(value.coordinates[1])),
-        None => return (None, None),
-    };
+        Some(value) => return Some(Point::new(value.coordinates[0], value.coordinates[1])),
+        None => None,
+    }
 }
