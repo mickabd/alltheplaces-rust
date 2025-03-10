@@ -19,24 +19,21 @@ pub fn is_file_empty(entry: &DirEntry) -> bool {
         }
         Ok(value) => value,
     };
-    let is_empty = metadata.is_file() && metadata.len() == 0;
-    if is_empty {
-        println!("{} is empty.", display);
-    }
-    is_empty
+    metadata.is_file() && metadata.len() == 0
 }
 
 pub fn read_geojson(entry: &DirEntry) -> Result<GeoJson, Box<dyn Error>> {
     let display = entry.path().display();
-    println!("trying to parse {} into a geojson", display);
+    // println!("trying to parse {} into a geojson", display);
+
     let string_value = match fs::read_to_string(&display.to_string()) {
         Err(why) => return Err(why.into()),
         Ok(value) => value,
     };
-    match string_value.parse::<GeoJson>() {
+    match serde_json::from_str(string_value.as_str()) {
         Err(why) => return Err(why.into()),
         Ok(value) => {
-            println!("successfully parsed {} into a geojson", display);
+            // println!("successfully parsed {} into a geojson", display);
             Ok(value)
         }
     }

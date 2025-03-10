@@ -1,13 +1,23 @@
+extern crate country_boundaries;
 extern crate geojson;
+extern crate lazy_static;
 extern crate url;
 
 use crate::files::{is_file_empty, read_geojson};
 use crate::model::{Feature, POI};
+use country_boundaries::{CountryBoundaries, LatLon, BOUNDARIES_ODBL_360X180};
 use geo::Point;
 use geojson::JsonValue;
+use lazy_static::lazy_static;
 use std::path::Display;
 use url::Url;
 use walkdir::DirEntry;
+
+lazy_static! {
+    static ref BOUNDARIES: CountryBoundaries =
+        CountryBoundaries::from_reader(BOUNDARIES_ODBL_360X180)
+            .expect("error while initializing the country boundaries");
+}
 
 pub fn extract_features(input_path: DirEntry) -> Option<Vec<POI>> {
     let display = input_path.path().display();
@@ -15,7 +25,7 @@ pub fn extract_features(input_path: DirEntry) -> Option<Vec<POI>> {
         println!("the file {} is empty, skipping it", display);
         return None;
     }
-    let content: JsonValue = match read_geojson(&input_path) {
+    let content = match read_geojson(&input_path) {
         Err(why) => {
             println!(
                 "the file {} is broken, skipping it. Error is: {}",
@@ -59,6 +69,8 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
     let poi_name = parse_names(&feature);
     let website = parse_url(&feature);
     let point = parse_coordinates(&feature);
+    let country_code = reverse_geocode(&feature);
+    // let phone_number = parsed_phone_number(&feature, &country_code);
 
     Some(POI {
         poi_name,
@@ -76,6 +88,7 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
         zipcode: feature.properties.address_postcode,
         state: feature.properties.address_state,
         country: feature.properties.address_country,
+        country_code,
         point,
     })
 }
@@ -105,8 +118,6 @@ fn parse_url(feature: &Feature) -> Option<String> {
                 if let Some(host) = parsed_url.host_str() {
                     return Some(host.to_string());
                 }
-            } else {
-                println!("Error parsing URL {}", url_str);
             }
         }
     }
@@ -117,5 +128,29 @@ fn parse_coordinates(feature: &Feature) -> Option<Point> {
     match &feature.geometry {
         Some(value) => return Some(Point::new(value.coordinates[0], value.coordinates[1])),
         None => None,
+    }
+}
+
+fn reverse_geocode(feature: &Feature) -> Option<String> {
+    let (longitude, latitude) = match &feature.geometry {
+        Some(value) => (value.coordinates[0], value.coordinates[1]),
+        None => return None,
+    };
+    let latlong = match LatLon::new(latitude, longitude) {
+        Err(why) => {
+            println!("error parsing the lat/long for feature: {:#?}", feature);
+            println!("error: {}", why);
+            return None;
+        }
+        Ok(value) => value,
+    };
+    let ids = BOUNDARIES.ids(latlong);
+    // We get the last one to get the biggest one.
+    match ids.last() {
+        None => {
+            println!("the latlong was not mapped to a country :O");
+            return None;
+        }
+        Some(value) => Some(value.to_string()),
     }
 }

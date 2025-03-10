@@ -27,6 +27,14 @@ pub fn get_client(
     }
 }
 
+pub fn truncate_table(client: &mut Client) -> Result<(), Box<dyn std::error::Error>> {
+    let mut transaction = client.transaction()?;
+    let query = "truncate table poi;";
+    transaction.execute(query, &[])?;
+    transaction.commit()?;
+    Ok(())
+}
+
 pub fn ingest_into_db(
     client: &mut Client,
     pois: Vec<POI>,
@@ -49,12 +57,14 @@ pub fn ingest_into_db(
         country,
         state,
         full_address,
-        street_name
+        street_name,
+        country_code
     ) FROM STDIN";
     let mut writer = transaction.copy_in(query)?;
 
     // Create a single buffer for all POIs
-    let mut buffer = String::with_capacity(pois.len() * 256); // Preallocate a reasonable size
+    // Preallocate a reasonable size
+    let mut buffer = String::with_capacity(pois.len() * 256);
 
     // Process all POIs and build the complete buffer
     for poi in pois {
@@ -90,8 +100,13 @@ pub fn ingest_into_db(
         buffer.push_str(&escape_field(&poi.full_address.unwrap_or_default()));
         buffer.push('\t');
         buffer.push_str(&escape_field(&poi.street_name.unwrap_or_default()));
+        buffer.push('\t');
+        buffer.push_str(&escape_field(&poi.country_code.unwrap_or_default()));
         buffer.push('\n');
     }
+
+    // Remove any null characters from the buffer
+    buffer.retain(|c| c != '\u{0000}');
 
     // Write the entire buffer at once
     writer.write_all(buffer.as_bytes())?;
@@ -121,16 +136,5 @@ fn escape_field(field: &str) -> String {
             .replace("\t", "\\t")
             .replace("\n", "\\n")
             .replace("\r", "\\r")
-    }
-}
-
-pub fn to_db(client: &mut Client) {
-    let rows = match client.query("select count(1) from poi;", &[]) {
-        Err(why) => panic!("error reading the table {}", why),
-        Ok(value) => value,
-    };
-    for row in rows {
-        let value: i64 = row.get("count");
-        println!("row: {}", value);
     }
 }

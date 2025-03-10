@@ -15,5 +15,6 @@ CREATE TABLE poi (
     country VARCHAR(255),
     state VARCHAR(255),
     full_address VARCHAR(255),
-    street_name VARCHAR(255)
+    street_name VARCHAR(255),
+    country_code VARCHAR(15),
 );

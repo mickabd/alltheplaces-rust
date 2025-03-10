@@ -7,7 +7,8 @@ pub mod unzip;
 
 extern crate dotenv;
 
-use db::{get_client, ingest_into_db};
+use country_boundaries::{CountryBoundaries, BOUNDARIES_ODBL_360X180};
+use db::{get_client, ingest_into_db, truncate_table};
 use dotenv::dotenv;
 use download::download_atp_data;
 use poi::extract_features;
@@ -29,17 +30,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let files_directory = String::from("temp/output/");
     download_atp_data(&output_path);
     unzip(output_path, unzip_directory);
+    truncate_table(&mut client)?;
     for entry in WalkDir::new(files_directory)
         .max_depth(1)
         .into_iter()
         .filter_map(|f| f.ok())
         .filter(|e| e.path().is_file())
     {
+        let display = entry.path().display().to_string();
         let pois = extract_features(entry);
         match pois {
             Some(value) => ingest_into_db(&mut client, value).unwrap(),
             None => continue,
         };
+        println!("File {} successfuly ingested", display);
     }
     Ok(())
 }
