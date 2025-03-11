@@ -13,16 +13,15 @@ RUN apk add --no-cache \
 RUN cargo new --bin alltheplaces
 WORKDIR /alltheplaces
 
+COPY ingestion/Cargo.toml Cargo.toml
+COPY Cargo.lock Cargo.lock
+
 # Build dependencies to reuse cached layers
-RUN --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
-    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-    # Use the RUSTFLAGS to statically link OpenSSL
-    RUSTFLAGS="-C target-feature=-crt-static" cargo build --release
+# Use the RUSTFLAGS to statically link OpenSSL
+RUN RUSTFLAGS="-C target-feature=-crt-static" cargo build --release
 
 # Build for release
-RUN --mount=type=bind,source=src,target=src \
-    --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
-    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
+RUN --mount=type=bind,source=ingestion/src,target=src \
     # Use the RUSTFLAGS to statically link OpenSSL
     RUSTFLAGS="-C target-feature=-crt-static" cargo build --release
 
@@ -49,7 +48,8 @@ USER appuser
 WORKDIR /app
 
 # Copy the build artifact from the builder stage
-COPY --from=builder /alltheplaces/target/release/alltheplaces .
+COPY --from=builder /alltheplaces/target/release/ingestion .
 
+COPY ./.env .
 # Set the startup command
 CMD ["./alltheplaces"]
