@@ -7,7 +7,6 @@ pub mod unzip;
 
 extern crate dotenv;
 
-use country_boundaries::{CountryBoundaries, BOUNDARIES_ODBL_360X180};
 use db::{get_client, ingest_into_db, truncate_table};
 use dotenv::dotenv;
 use download::download_atp_data;

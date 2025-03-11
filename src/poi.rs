@@ -49,7 +49,6 @@ fn build_pois(content: JsonValue, file_path: &Display) -> Vec<POI> {
         let poi = match build_poi(feature) {
             Some(value) => value,
             None => {
-                println!("file data is incomplete");
                 continue;
             }
         };
@@ -69,8 +68,10 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
     let poi_name = parse_names(&feature);
     let website = parse_url(&feature);
     let point = parse_coordinates(&feature);
-    let country_code = reverse_geocode(&feature);
-    // let phone_number = parsed_phone_number(&feature, &country_code);
+    let country_code = match reverse_geocode(&feature) {
+        Some(value) => value,
+        None => return None,
+    };
 
     Some(POI {
         poi_name,
@@ -80,6 +81,7 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
         spider_id: feature.properties.spider_id,
         opening_hours: feature.properties.opening_hours,
         phone: feature.properties.phone,
+        //phone: phone_number,
         full_address: feature.properties.address_full,
         house_number: feature.properties.address_housenumber,
         street_name: feature.properties.address_street,
@@ -147,10 +149,7 @@ fn reverse_geocode(feature: &Feature) -> Option<String> {
     let ids = BOUNDARIES.ids(latlong);
     // We get the last one to get the biggest one.
     match ids.last() {
-        None => {
-            println!("the latlong was not mapped to a country :O");
-            return None;
-        }
+        None => return None,
         Some(value) => Some(value.to_string()),
     }
 }

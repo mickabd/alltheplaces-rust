@@ -80,7 +80,7 @@ pub struct POI {
     pub house_number: Option<String>,
     pub street_address: Option<String>,
     pub country: Option<String>,
-    pub country_code: Option<String>,
+    pub country_code: String,
     pub state: Option<String>,
     pub full_address: Option<String>,
     pub street_name: Option<String>,

@@ -101,7 +101,7 @@ pub fn ingest_into_db(
         buffer.push('\t');
         buffer.push_str(&escape_field(&poi.street_name.unwrap_or_default()));
         buffer.push('\t');
-        buffer.push_str(&escape_field(&poi.country_code.unwrap_or_default()));
+        buffer.push_str(&escape_field(&poi.country_code));
         buffer.push('\n');
     }
 
