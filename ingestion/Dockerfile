@@ -13,6 +13,12 @@ RUN apk add --no-cache \
 RUN cargo new --bin alltheplaces
 WORKDIR /alltheplaces
 
+# Build dependencies to reuse cached layers
+RUN --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
+    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
+    # Use the RUSTFLAGS to statically link OpenSSL
+    RUSTFLAGS="-C target-feature=-crt-static" cargo build --release
+
 # Build for release
 RUN --mount=type=bind,source=src,target=src \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \

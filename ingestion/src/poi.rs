@@ -5,7 +5,7 @@ extern crate url;
 
 use crate::files::{is_file_empty, read_geojson};
 use crate::model::{Feature, POI};
-use country_boundaries::{CountryBoundaries, LatLon, BOUNDARIES_ODBL_360X180};
+use country_boundaries::{BOUNDARIES_ODBL_360X180, CountryBoundaries, LatLon};
 use geo::Point;
 use geojson::JsonValue;
 use lazy_static::lazy_static;
