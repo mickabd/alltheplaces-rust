@@ -1,21 +1,66 @@
+mod poi;
+use actix_web::{
+    App, HttpResponse, HttpServer, Responder, get,
+    web::{Data, Path},
+};
 use dotenv::dotenv;
-use sqlx::postgres::PgPoolOptions;
-use std::{env, error::Error};
+use poi::POI;
+use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
+use std::env;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+pub struct AppState {
+    db: Pool<Postgres>,
+}
+
+#[actix_web::main]
+async fn main() -> Result<(), std::io::Error> {
     dotenv().ok();
-    let db_url = env::var("DBURL")?;
+    let db_url = env::var("DBURL").expect("DBURL must be set!");
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&db_url)
-        .await?;
+        .await
+        .expect("Error building a connection pool");
 
-    let row: (i64,) = sqlx::query_as("SELECT count(1) FROM poi LIMIT 1")
-        .fetch_one(&pool)
-        .await?;
+    HttpServer::new(move || {
+        App::new()
+            .app_data(Data::new(AppState { db: pool.clone() }))
+            .service(hello_world)
+            .service(get_poi_by_id)
+            .service(get_random_pois)
+    })
+    .bind(("127.0.0.1", 8080))?
+    .run()
+    .await
+}
 
-    println!("row: {}", row.0);
+#[get("/hello_world")]
+async fn hello_world(_state: Data<AppState>) -> impl Responder {
+    HttpResponse::Ok().json("Hello world!")
+}
 
-    Ok(())
+#[get("/poi/{id}")]
+async fn get_poi_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder {
+    let id = path.into_inner();
+    match sqlx::query_as::<_, POI>("SELECT * FROM poi WHERE id = $1")
+        .bind(id)
+        .fetch_one(&state.db)
+        .await
+    {
+        Err(why) => HttpResponse::NotFound().body(format!("No articles found: {}", why)),
+        Ok(poi) => HttpResponse::Ok().json(poi),
+    }
+}
+
+#[get("/poi/random/{count}")]
+async fn get_random_pois(state: Data<AppState>, path: Path<i64>) -> impl Responder {
+    let id = path.into_inner();
+    match sqlx::query_as::<_, POI>("SELECT * FROM poi LIMIT $1")
+        .bind(id)
+        .fetch_all(&state.db)
+        .await
+    {
+        Err(why) => HttpResponse::NotFound().body(format!("No articles found: {}", why)),
+        Ok(pois) => HttpResponse::Ok().json(pois),
+    }
 }
