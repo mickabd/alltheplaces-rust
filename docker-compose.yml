@@ -30,14 +30,5 @@ services:
       DBURL: postgres://admin:example@postgres/poi
     ports:
       - "8080:8080"
-  # ingestion:
-  #   build: .
-  #   platform: linux/amd64
-  #   restart: always
-  #   depends_on:
-  #     - postgres
-  #   volumes:
-  #     - ${PWD}/.env:/.env
-
 volumes:
   pg_data:

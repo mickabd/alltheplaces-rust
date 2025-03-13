@@ -50,6 +50,5 @@ WORKDIR /app
 # Copy the build artifact from the builder stage
 COPY --from=builder /alltheplaces/target/release/ingestion .
 
-COPY ./.env .
 # Set the startup command
 CMD ["./ingestion"]
