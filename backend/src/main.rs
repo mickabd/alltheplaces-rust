@@ -22,14 +22,15 @@ async fn main() -> Result<(), std::io::Error> {
         .await
         .expect("Error building a connection pool");
 
+    println!("Starting server...");
     HttpServer::new(move || {
         App::new()
             .app_data(Data::new(AppState { db: pool.clone() }))
-            .service(hello_world)
+            //.service(hello_world)
             .service(get_poi_by_id)
             .service(get_random_pois)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 8080))?
     .run()
     .await
 }

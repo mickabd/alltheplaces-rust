@@ -17,6 +17,19 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    platform: linux/amd64
+    #restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DBURL: postgres://admin:example@postgres/poi
+    ports:
+      - "8080:8080"
   # ingestion:
   #   build: .
   #   platform: linux/amd64

@@ -1,6 +1,9 @@
 # Use Alpine-based Rust image for the builder stage
 FROM rust:1.85-alpine AS builder
 
+ENV RUST_LOG=info \
+    RUST_BACKTRACE=1
+
 # Install build dependencies
 RUN apk add --no-cache \
     musl-dev \
@@ -13,7 +16,7 @@ RUN apk add --no-cache \
 RUN cargo new --bin alltheplaces
 WORKDIR /alltheplaces
 
-COPY ingestion/Cargo.toml Cargo.toml
+COPY backend/Cargo.toml Cargo.toml
 COPY Cargo.lock Cargo.lock
 
 # Build dependencies to reuse cached layers
@@ -21,7 +24,7 @@ COPY Cargo.lock Cargo.lock
 RUN RUSTFLAGS="-C target-feature=-crt-static" cargo build --release
 
 # Build for release
-RUN --mount=type=bind,source=ingestion/src,target=src \
+RUN --mount=type=bind,source=backend/src,target=src \
     # Use the RUSTFLAGS to statically link OpenSSL
     RUSTFLAGS="-C target-feature=-crt-static" cargo build --release
 
@@ -43,13 +46,15 @@ RUN adduser \
     -s "/sbin/nologin" \
     -u "${UID}" \
     appuser
+
 USER appuser
 
 WORKDIR /app
 
 # Copy the build artifact from the builder stage
-COPY --from=builder /alltheplaces/target/release/ingestion .
+COPY --from=builder /alltheplaces/target/release/backend .
 
-COPY ./.env .
-# Set the startup command
-CMD ["./ingestion"]
+EXPOSE 8080
+
+# Set the startup entry point to the built binary
+CMD ["./backend"]
