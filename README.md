@@ -37,3 +37,13 @@ The ingestion process will download the zip file, extract the data, clean it and
 1. run `docker compose up postgres` to start the postgresql database.
 2. run `cargo run --bin backend` or `docker compose up backend` to start the backend server.
 3. The server will be available at `http://localhost:8080`
+
+## Next steps
+
+- Add tests
+- Use Indexes in the database to improve performance
+- Normalize the data in the database (e.g. create a table for the brands)
+- Use env_logger for logging
+- Improve Error messages
+- Is there a way to generate documentation for the endpoints?
+- Add more endpoints to query the data
