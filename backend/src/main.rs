@@ -26,18 +26,12 @@ async fn main() -> Result<(), std::io::Error> {
     HttpServer::new(move || {
         App::new()
             .app_data(Data::new(AppState { db: pool.clone() }))
-            //.service(hello_world)
             .service(get_poi_by_id)
             .service(get_random_pois)
     })
     .bind(("0.0.0.0", 8080))?
     .run()
     .await
-}
-
-#[get("/hello_world")]
-async fn hello_world(_state: Data<AppState>) -> impl Responder {
-    HttpResponse::Ok().json("Hello world!")
 }
 
 #[get("/poi/{id}")]
@@ -48,7 +42,9 @@ async fn get_poi_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder
         .fetch_one(&state.db)
         .await
     {
-        Err(why) => HttpResponse::NotFound().body(format!("No articles found: {}", why)),
+        Err(why) => {
+            HttpResponse::NotFound().body(format!("No poi found with id: {}, error: {}", id, why))
+        }
         Ok(poi) => HttpResponse::Ok().json(poi),
     }
 }
@@ -61,7 +57,9 @@ async fn get_random_pois(state: Data<AppState>, path: Path<i64>) -> impl Respond
         .fetch_all(&state.db)
         .await
     {
-        Err(why) => HttpResponse::NotFound().body(format!("No articles found: {}", why)),
+        Err(why) => {
+            HttpResponse::NotFound().body(format!("Error while getting random POIs: {}", why))
+        }
         Ok(pois) => HttpResponse::Ok().json(pois),
     }
 }
