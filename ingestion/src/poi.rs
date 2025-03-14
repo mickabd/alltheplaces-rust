@@ -4,7 +4,7 @@ extern crate lazy_static;
 extern crate url;
 
 use crate::files::{is_file_empty, read_geojson};
-use crate::model::{Feature, POI};
+use crate::model::{Feature, Geometry, POI};
 use country_boundaries::{BOUNDARIES_ODBL_360X180, CountryBoundaries, LatLon};
 use geo::Point;
 use geojson::JsonValue;
@@ -65,10 +65,13 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
         }
         Ok(value) => value,
     };
-    let poi_name = parse_names(&feature);
-    let website = parse_url(&feature);
-    let point = parse_coordinates(&feature);
-    let country_code = match reverse_geocode(&feature) {
+    let poi_name = parse_names(&feature.properties.brand, &feature.properties.name);
+    let website = parse_url(
+        &feature.properties.website,
+        &Some(feature.properties.source_uri.clone()),
+    );
+    let point = parse_coordinates(&feature.geometry);
+    let country_code = match reverse_geocode(&point) {
         Some(value) => value,
         None => return None,
     };
@@ -94,24 +97,19 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
     })
 }
 
-fn parse_names(feature: &Feature) -> Option<String> {
-    let brand = feature.properties.brand.clone();
-    let name = feature.properties.name.clone();
+fn parse_names(brand: &Option<String>, name: &Option<String>) -> Option<String> {
     match name {
-        Some(name) => return Some(name),
+        Some(name) => return Some(name.clone()),
         None => match brand {
-            Some(value) => Some(value),
+            Some(value) => Some(value.clone()),
             None => None,
         },
     }
 }
 
-fn parse_url(feature: &Feature) -> Option<String> {
+fn parse_url(website: &Option<String>, source_uri: &Option<String>) -> Option<String> {
     // Try website first, then fall back to source_uri
-    let urls_to_try = [
-        feature.properties.website.as_ref(),
-        Some(&feature.properties.source_uri),
-    ];
+    let urls_to_try = [website, source_uri];
 
     for url_opt in urls_to_try {
         if let Some(url_str) = url_opt {
@@ -125,21 +123,21 @@ fn parse_url(feature: &Feature) -> Option<String> {
     None
 }
 
-fn parse_coordinates(feature: &Feature) -> Option<Point> {
-    match &feature.geometry {
+fn parse_coordinates(geometry: &Option<Geometry>) -> Option<Point> {
+    match geometry {
         Some(value) => return Some(Point::new(value.coordinates[0], value.coordinates[1])),
         None => None,
     }
 }
 
-fn reverse_geocode(feature: &Feature) -> Option<String> {
-    let (longitude, latitude) = match &feature.geometry {
-        Some(value) => (value.coordinates[0], value.coordinates[1]),
+fn reverse_geocode(point: &Option<Point>) -> Option<String> {
+    let (longitude, latitude) = match point {
+        Some(value) => (value.x(), value.y()),
         None => return None,
     };
     let latlong = match LatLon::new(latitude, longitude) {
         Err(why) => {
-            println!("error parsing the lat/long for feature: {:#?}", feature);
+            println!("error parsing the lat/long for Point: {:#?}", point);
             println!("error: {}", why);
             return None;
         }
