@@ -65,7 +65,7 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
         }
         Ok(value) => value,
     };
-    let poi_name = parse_names(&feature.properties.brand, &feature.properties.name);
+    let poi_name = parse_poi_name(&feature.properties.brand, &feature.properties.name);
     let website = parse_url(
         &feature.properties.website,
         &Some(feature.properties.source_uri.clone()),
@@ -97,7 +97,7 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
     })
 }
 
-fn parse_names(brand: &Option<String>, name: &Option<String>) -> Option<String> {
+fn parse_poi_name(brand: &Option<String>, name: &Option<String>) -> Option<String> {
     match name {
         Some(name) => return Some(name.clone()),
         None => match brand {
@@ -148,5 +148,56 @@ fn reverse_geocode(point: &Option<Point>) -> Option<String> {
     match ids.last() {
         None => return None,
         Some(value) => Some(value.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_poi_name_with_name() {
+        let result = parse_poi_name(&Some(String::from("mickael")), &Some(String::from("jules")));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("jules"))
+    }
+
+    #[test]
+    fn test_parse_poi_name_without_name() {
+        let result = parse_poi_name(&Some(String::from("mickael")), &None);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("mickael"))
+    }
+
+    #[test]
+    fn test_parse_poi_name_without_none() {
+        let result = parse_poi_name(&None, &None);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_url_with_website() {
+        let result = parse_url(
+            &Some(String::from("https://doc.rust-lang.org/")),
+            &Some(String::from("https://calendar.google.com/calendar/")),
+        );
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("doc.rust-lang.org"));
+    }
+
+    #[test]
+    fn test_parse_url_with_wrong_website() {
+        let result = parse_url(
+            &Some(String::from("..doc.rust-lang.org/")),
+            &Some(String::from("https://calendar.google.com/calendar/")),
+        );
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("calendar.google.com"));
+    }
+
+    #[test]
+    fn test_parse_url_with_none() {
+        let result = parse_url(&None, &None);
+        assert!(result.is_none());
     }
 }
