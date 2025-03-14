@@ -200,4 +200,54 @@ mod tests {
         let result = parse_url(&None, &None);
         assert!(result.is_none());
     }
+
+    #[test]
+    fn test_parse_coordinates() {
+        let result = parse_coordinates(&Some(Geometry {
+            r#type: "Point".to_string(),
+            coordinates: [-1.0, 1.0],
+        }));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().x(), -1.0);
+        assert_eq!(result.unwrap().y(), 1.0);
+    }
+
+    #[test]
+    fn test_parse_coordinates_none() {
+        let result = parse_coordinates(&None);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_reverse_geocode_fr() {
+        let result = reverse_geocode(&Some(Point::new(2.3276581, 48.8805374)));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("FR"));
+    }
+
+    #[test]
+    fn test_reverse_geocode_en() {
+        let result = reverse_geocode(&Some(Point::new(-0.14405508452768728, 51.4893335)));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("GB"));
+    }
+
+    #[test]
+    fn test_reverse_geocode_us() {
+        let result = reverse_geocode(&Some(Point::new(-74.0060152, 40.7127281)));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("US"));
+    }
+
+    #[test]
+    fn test_reverse_geocode_none() {
+        let result = reverse_geocode(&None);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_reverse_geocode_water() {
+        let result = reverse_geocode(&Some(Point::new(3.864293, 54.375721)));
+        assert!(result.is_none());
+    }
 }
