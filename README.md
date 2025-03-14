@@ -40,10 +40,10 @@ The ingestion process will download the zip file, extract the data, clean it and
 
 ## Next steps
 
-- Add tests
-- Use Indexes in the database to improve performance
-- Normalize the data in the database (e.g. create a table for the brands)
-- Use env_logger for logging
-- Improve Error messages
-- Is there a way to generate documentation for the endpoints?
-- Add more endpoints to query the data
+- [ ] Add tests
+- [ ] Use Indexes in the database to improve performance
+- [ ] Normalize the data in the database (e.g. create a table for the brands)
+- [ ] Use env_logger for logging
+- [ ] Improve Error messages
+- [ ] Is there a way to generate documentation for the endpoints?
+- [ ] Add more endpoints to query the data
