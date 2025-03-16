@@ -65,7 +65,7 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
         }
         Ok(value) => value,
     };
-    let poi_name = parse_names(&feature.properties.brand, &feature.properties.name);
+    let poi_name = parse_poi_name(&feature.properties.brand, &feature.properties.name);
     let website = parse_url(
         &feature.properties.website,
         &Some(feature.properties.source_uri.clone()),
@@ -97,7 +97,7 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
     })
 }
 
-fn parse_names(brand: &Option<String>, name: &Option<String>) -> Option<String> {
+fn parse_poi_name(brand: &Option<String>, name: &Option<String>) -> Option<String> {
     match name {
         Some(name) => return Some(name.clone()),
         None => match brand {
@@ -148,5 +148,239 @@ fn reverse_geocode(point: &Option<Point>) -> Option<String> {
     match ids.last() {
         None => return None,
         Some(value) => Some(value.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_parse_poi_name_with_name() {
+        let result = parse_poi_name(&Some(String::from("mickael")), &Some(String::from("jules")));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("jules"))
+    }
+
+    #[test]
+    fn test_parse_poi_name_without_name() {
+        let result = parse_poi_name(&Some(String::from("mickael")), &None);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("mickael"))
+    }
+
+    #[test]
+    fn test_parse_poi_name_without_none() {
+        let result = parse_poi_name(&None, &None);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_url_with_website() {
+        let result = parse_url(
+            &Some(String::from("https://doc.rust-lang.org/")),
+            &Some(String::from("https://calendar.google.com/calendar/")),
+        );
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("doc.rust-lang.org"));
+    }
+
+    #[test]
+    fn test_parse_url_with_wrong_website() {
+        let result = parse_url(
+            &Some(String::from("..doc.rust-lang.org/")),
+            &Some(String::from("https://calendar.google.com/calendar/")),
+        );
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("calendar.google.com"));
+    }
+
+    #[test]
+    fn test_parse_url_with_none() {
+        let result = parse_url(&None, &None);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_coordinates() {
+        let result = parse_coordinates(&Some(Geometry {
+            r#type: "Point".to_string(),
+            coordinates: [-1.0, 1.0],
+        }));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().x(), -1.0);
+        assert_eq!(result.unwrap().y(), 1.0);
+    }
+
+    #[test]
+    fn test_parse_coordinates_none() {
+        let result = parse_coordinates(&None);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_reverse_geocode_fr() {
+        let result = reverse_geocode(&Some(Point::new(2.3276581, 48.8805374)));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("FR"));
+    }
+
+    #[test]
+    fn test_reverse_geocode_en() {
+        let result = reverse_geocode(&Some(Point::new(-0.14405508452768728, 51.4893335)));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("GB"));
+    }
+
+    #[test]
+    fn test_reverse_geocode_us() {
+        let result = reverse_geocode(&Some(Point::new(-74.0060152, 40.7127281)));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), String::from("US"));
+    }
+
+    #[test]
+    fn test_reverse_geocode_none() {
+        let result = reverse_geocode(&None);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_reverse_geocode_water() {
+        let result = reverse_geocode(&Some(Point::new(3.864293, 54.375721)));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_build_poi_valid_feature() {
+        let feature = serde_json::json!({
+            "id": "uuid",
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [-74.0060152, 40.7127281]
+            },
+            "properties": {
+                "name": "Test POI",
+                "brand": "Test Brand",
+                "website": "http://example.com",
+                "@source_uri": "http://example.com",
+                "@brand:wikidata": "Q12345",
+                "@spider": "spider_1",
+                "opening_hours": "24/7",
+                "phone": "+123456789",
+                "addr:full": "123 Test St, Test City, Test Country",
+                "addr:housenumber": "123",
+                "addr:street": "Test St",
+                "addr:street_address": "123 Test St",
+                "addr:city": "Test City",
+                "addr:postcode": "12345",
+                "addr:state": "Test State",
+                "addr:country": "Test Country"
+            }
+        });
+
+        let result = build_poi(&feature);
+        assert!(result.is_some());
+        let poi = result.unwrap();
+        assert_eq!(poi.poi_name, Some("Test POI".to_string()));
+        assert_eq!(poi.brand, Some("Test Brand".to_string()));
+        assert_eq!(poi.website, Some("example.com".to_string()));
+        assert_eq!(poi.brand_wikidata_id, Some("Q12345".to_string()));
+        assert_eq!(poi.spider_id, "spider_1".to_string());
+        assert_eq!(poi.opening_hours, Some("24/7".to_string()));
+        assert_eq!(poi.phone, Some("+123456789".to_string()));
+        assert_eq!(
+            poi.full_address,
+            Some("123 Test St, Test City, Test Country".to_string())
+        );
+        assert_eq!(poi.house_number, Some("123".to_string()));
+        assert_eq!(poi.street_name, Some("Test St".to_string()));
+        assert_eq!(poi.street_address, Some("123 Test St".to_string()));
+        assert_eq!(poi.city, Some("Test City".to_string()));
+        assert_eq!(poi.zipcode, Some("12345".to_string()));
+        assert_eq!(poi.state, Some("Test State".to_string()));
+        assert_eq!(poi.country, Some("Test Country".to_string()));
+        assert_eq!(poi.country_code, "US".to_string());
+        assert_eq!(poi.point, Some(Point::new(-74.0060152, 40.7127281)));
+    }
+
+    #[test]
+    fn test_build_poi_invalid_feature() {
+        let feature = serde_json::json!({
+            "id": "uuid",
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [5, 0]
+            },
+            "properties": {
+                "name": "Test POI",
+                "brand": "Test Brand",
+                "website": "http://example.com",
+                "@source_uri": "http://example.com",
+                "@brand:wikidata": "Q12345",
+                "@spider": "spider_1",
+                "opening_hours": "24/7",
+                "phone": "+123456789",
+                "addr:full": "123 Test St, Test City, Test Country",
+                "addr:housenumber": "123",
+                "addr:street": "Test St",
+                "addr:street_address": "123 Test St",
+                "addr:city": "Test City",
+                "addr:postcode": "12345",
+                "addr:state": "Test State",
+                "addr:country": "Test Country"
+            }
+        });
+
+        let result = build_poi(&feature);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_build_poi_missing_properties() {
+        let feature = serde_json::json!({
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [102.0, 0.5]
+            },
+            "properties": {}
+        });
+
+        let result = build_poi(&feature);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_build_poi_missing_geometry() {
+        let feature = json!({
+            "id": "uuid",
+            "type": "Feature",
+            "properties": {
+                "name": "Test POI",
+                "brand": "Test Brand",
+                "website": "http://example.com",
+                "@source_uri": "http://example.com",
+                "@brand:wikidata": "Q12345",
+                "@spider": "spider_1",
+                "opening_hours": "24/7",
+                "phone": "+123456789",
+                "addr:full": "123 Test St, Test City, Test Country",
+                "addr:housenumber": "123",
+                "addr:street": "Test St",
+                "addr:street_address": "123 Test St",
+                "addr:city": "Test City",
+                "addr:postcode": "12345",
+                "addr:state": "Test State",
+                "addr:country": "Test Country"
+            }
+        });
+
+        let result = build_poi(&feature);
+        assert!(result.is_none());
     }
 }
