@@ -1,6 +1,3 @@
-extern crate reqwest;
-extern crate zip;
-
 use std::fs::File;
 
 pub fn unzip(file_path: String, output_directory: String) {
