@@ -3,6 +3,7 @@ extern crate postgres;
 use std::io::Write;
 
 use geo::Point;
+use log::{debug, error, info};
 use postgres::{Client, NoTls};
 
 use crate::model::POI;
@@ -14,24 +15,38 @@ pub fn get_client(
     port: String,
     dbname: String,
 ) -> Client {
-    match Client::connect(
-        format!(
-            "host={} user={} password={} port={} dbname={}",
-            host, user, password, port, dbname
-        )
-        .as_str(),
-        NoTls,
-    ) {
-        Err(why) => panic!("error while creating the sql client: {}", why),
-        Ok(value) => value,
+    debug!("attempting to connect to database at {}:{}", host, port);
+
+    let connection_string = format!(
+        "host={} user={} password={} port={} dbname={}",
+        host, user, password, port, dbname
+    );
+
+    match Client::connect(connection_string.as_str(), NoTls) {
+        Ok(client) => {
+            info!("successfully connected to database '{}'", dbname);
+            client
+        }
+        Err(err) => {
+            error!("failed to connect to database: {}", err);
+            panic!("error while creating the sql client: {}", err);
+        }
     }
 }
 
 pub fn truncate_table(client: &mut Client) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("attempting to truncate poi table");
+
     let mut transaction = client.transaction()?;
     let query = "truncate table poi;";
+
+    debug!("executing query: {}", query);
     transaction.execute(query, &[])?;
+
+    debug!("committing transaction");
     transaction.commit()?;
+
+    info!("successfully truncated poi table");
     Ok(())
 }
 
