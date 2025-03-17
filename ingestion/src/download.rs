@@ -46,40 +46,79 @@ fn get_file_url() -> String {
     url.to_string()
 }
 
-pub fn download_atp_data(output_path: &String) {
+pub fn download_atp_data(output_path: &String) -> Result<(), Box<dyn std::error::Error>> {
     let url = get_file_url();
     let path = Path::new(&output_path);
 
     debug!(
-        "Creating the directory {}",
-        path.parent().unwrap().display()
+        "creating directory at {}",
+        path.parent().unwrap_or_else(|| Path::new("")).display()
     );
-    fs::create_dir_all(path.parent().unwrap()).unwrap();
 
-    debug!("Creating an empty file at {}", output_path);
-    let mut file =
-        File::create(path).expect(format!("not able to create the file {}", output_path).as_str());
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            error!("failed to create directory {}: {}", parent.display(), e);
+            e
+        })?;
+    }
+
+    debug!("creating output file at {}", output_path);
+    let mut file = match File::create(path) {
+        Ok(f) => f,
+        Err(e) => {
+            error!("failed to create file at {}: {}", output_path, e);
+            return Err(e.into());
+        }
+    };
 
     let client = reqwest::blocking::Client::builder()
         .timeout(Some(Duration::new(120, 0)))
         .build()
-        .unwrap();
-    let req = client.get(&url).build().expect(
-        format!(
-            "error when building the request to get the zip file at {}",
-            url
-        )
-        .as_str(),
-    );
+        .map_err(|e| {
+            error!("failed to build HTTP client: {}", e);
+            e
+        })?;
 
-    debug!("Getting the zip file from {}", url);
-    let resp = client
-        .execute(req)
-        .expect(format!("error requesting the zip file at {}", url).as_str())
-        .bytes()
-        .unwrap();
-    info!("Got file from {}", url);
-    debug!("Writing the file to {}", output_path);
-    file.write_all(&resp).unwrap();
-    info!("File written to {}", output_path);
+    debug!("preparing request to download from {}", url);
+    let req = client.get(&url).build().map_err(|e| {
+        error!("failed to build request for {}: {}", url, e);
+        e
+    })?;
+
+    debug!("downloading zip file from {}", url);
+    let resp = match client.execute(req) {
+        Ok(response) => {
+            if !response.status().is_success() {
+                let status = response.status();
+                warn!("received non-success status code {} from {}", status, url);
+                return Err(format!("HTTP error: status code {}", status).into());
+            }
+
+            match response.bytes() {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    error!("failed to read response body from {}: {}", url, e);
+                    return Err(e.into());
+                }
+            }
+        }
+        Err(e) => {
+            error!("request to {} failed: {}", url, e);
+            return Err(e.into());
+        }
+    };
+
+    info!("successfully downloaded {} bytes from {}", resp.len(), url);
+
+    debug!("writing downloaded data to {}", output_path);
+    match file.write_all(&resp) {
+        Ok(_) => {
+            info!("successfully wrote file to {}", output_path);
+            Ok(())
+        }
+        Err(e) => {
+            error!("failed to write data to {}: {}", output_path, e);
+            Err(e.into())
+        }
+    }
 }

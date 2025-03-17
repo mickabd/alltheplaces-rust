@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let unzip_directory = String::from("temp/");
     let files_directory = String::from("temp/output/");
 
-    download_atp_data(&output_path);
+    download_atp_data(&output_path)?;
     unzip(output_path, unzip_directory);
     truncate_table(&mut client)?;
     for entry in WalkDir::new(files_directory)
