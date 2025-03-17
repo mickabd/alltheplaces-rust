@@ -1,6 +1,3 @@
-extern crate geojson;
-extern crate url;
-
 use geojson::GeoJson;
 use std::error::Error;
 use std::fs::{self, File};
@@ -52,4 +49,135 @@ pub fn write_to_csv(pois: Vec<POI>, output_file: &str) -> Result<(), Box<dyn Err
     }
     wtr.flush()?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+    use tempdir::TempDir;
+    use walkdir::WalkDir;
+
+    #[test]
+    fn test_empty_file() {
+        let dir = TempDir::new("directory").expect("Failed to create temp dir");
+        let file_path = dir.path().join("empty.txt");
+        File::create(&file_path).expect("Failed to create file");
+        let entry = WalkDir::new(dir.path())
+            .into_iter()
+            .filter_map(Result::ok)
+            .find(|e| e.path().is_file())
+            .expect("No file found in temp dir");
+        assert!(is_file_empty(&entry));
+    }
+
+    #[test]
+    fn test_non_empty_file() {
+        let dir = TempDir::new("directory").expect("Failed to create temp dir");
+        let file_path = dir.path().join("non_empty.txt");
+        let mut file = File::create(&file_path).expect("Failed to create file");
+        writeln!(file, "Hello").expect("Failed to write to file");
+        let entry = WalkDir::new(dir.path())
+            .into_iter()
+            .filter_map(Result::ok)
+            .find(|e| e.path().is_file())
+            .expect("No file found in temp dir");
+        assert!(!is_file_empty(&entry));
+    }
+
+    #[test]
+    fn test_read_geojson_valid() {
+        let temp_dir = TempDir::new("geojson_test").expect("Failed to create temp dir");
+        let file_path = temp_dir.path().join("valid.geojson");
+
+        let geojson_content = r#"{
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [102.0, 0.5]
+                    },
+                    "properties": {
+                        "name": "Sample Point"
+                    }
+                }
+            ]
+        }"#;
+
+        let mut file = File::create(&file_path).expect("Failed to create test file");
+        file.write_all(geojson_content.as_bytes())
+            .expect("Failed to write to test file");
+
+        for entry in WalkDir::new(temp_dir.path())
+            .into_iter()
+            .filter_map(Result::ok)
+        {
+            if entry.path().is_file() {
+                let result = read_geojson(&entry);
+                assert!(result.is_ok(), "Expected Ok, got Err: {:?}", result);
+            }
+        }
+    }
+
+    #[test]
+    fn test_read_geojson_invalid() {
+        let temp_dir = TempDir::new("geojson_test").expect("Failed to create temp dir");
+        let file_path = temp_dir.path().join("invalid.geojson");
+
+        let invalid_geojson_content = r#"{
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "INVALID_TYPE",
+                        "coordinates": [102.0, 0.5]
+                    },
+                    "properties": {
+                        "name": "Sample Point"
+                    }
+                }
+            ]
+        }"#;
+
+        let mut file = File::create(&file_path).expect("Failed to create test file");
+        file.write_all(invalid_geojson_content.as_bytes())
+            .expect("Failed to write to test file");
+
+        for entry in WalkDir::new(temp_dir.path())
+            .into_iter()
+            .filter_map(Result::ok)
+        {
+            if entry.path().is_file() {
+                let result = read_geojson(&entry);
+                assert!(result.is_err(), "Expected Err, got Ok: {:?}", result);
+            }
+        }
+    }
+
+    #[test]
+    fn test_read_geojson_non_json() {
+        let temp_dir = TempDir::new("geojson_test").expect("Failed to create temp dir");
+        let file_path = temp_dir.path().join("not_json.txt");
+
+        let non_json_content = "This is not a JSON file";
+
+        let mut file = File::create(&file_path).expect("Failed to create test file");
+        file.write_all(non_json_content.as_bytes())
+            .expect("Failed to write to test file");
+
+        for entry in WalkDir::new(temp_dir.path())
+            .into_iter()
+            .filter_map(Result::ok)
+        {
+            if entry.path().is_file() {
+                let result = read_geojson(&entry);
+                assert!(result.is_err(), "Expected Err, got Ok: {:?}", result);
+            }
+        }
+    }
 }
