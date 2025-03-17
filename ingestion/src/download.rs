@@ -2,31 +2,47 @@ use std::fs;
 use std::io::Write;
 use std::{fs::File, path::Path, time::Duration};
 
-use log::{debug, info};
+use log::{debug, error, info, warn};
 use regex::Regex;
 
 fn get_file_url() -> String {
-    debug!("Getting the latest URL download link");
+    debug!("getting the latest URL download link");
     let atp_base_url = String::from("https://data.alltheplaces.xyz/runs/latest/info_embed.html");
 
+    debug!("attempting to request URL: {}", atp_base_url);
     let request = reqwest::blocking::get(&atp_base_url)
-        .expect(format!("not able to reach the url {}", atp_base_url).as_str());
+        .expect(format!("failed to connect to {}", atp_base_url).as_str());
 
-    let body = request
-        .text()
-        .expect("not able to parse the body of the request, {}");
+    if !request.status().is_success() {
+        warn!(
+            "request returned non-success status code: {}",
+            request.status()
+        );
+    }
 
-    debug!("Got the body of the request {}", body);
+    debug!("parsing response body from request");
+    let body = request.text().expect("failed to parse response body");
 
-    // unwrap is ok because it's a harcoded value
+    debug!("looking for URL pattern in response body");
+    // unwrap is ok because it's a hardcoded value
     let re = Regex::new("href=[\"\'](https?://[^\"\']+?)[\"\']").unwrap();
-    let captures = re
-        .captures(&body)
-        .expect("could not find the latest URL download link!");
 
-    // The first captures is always the full string containing the match.
+    let captures = match re.captures(&body) {
+        Some(c) => c,
+        None => {
+            error!("no URL pattern found in response body");
+            panic!("could not find the latest URL download link!");
+        }
+    };
+
+    // The first capture is always the full string containing the match
     let url = captures.get(1).expect("capture group not found").as_str();
-    info!("Got the latest URL download link: {}", url);
+    info!("got the latest URL download link: {}", url);
+
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        warn!("URL doesn't start with http(s)://: {}", url);
+    }
+
     url.to_string()
 }
 
