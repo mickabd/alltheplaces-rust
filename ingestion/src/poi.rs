@@ -1,14 +1,10 @@
-extern crate country_boundaries;
-extern crate geojson;
-extern crate lazy_static;
-extern crate url;
-
 use crate::files::{is_file_empty, read_geojson};
 use crate::model::{Feature, Geometry, POI};
 use country_boundaries::{BOUNDARIES_ODBL_360X180, CountryBoundaries, LatLon};
 use geo::Point;
 use geojson::JsonValue;
 use lazy_static::lazy_static;
+use log::warn;
 use std::path::Display;
 use url::Url;
 use walkdir::DirEntry;
@@ -27,7 +23,7 @@ pub fn extract_features(input_path: DirEntry) -> Option<Vec<POI>> {
     }
     let content = match read_geojson(&input_path) {
         Err(why) => {
-            println!(
+            warn!(
                 "the file {} is broken, skipping it. Error is: {}",
                 display, why
             );
@@ -60,7 +56,7 @@ fn build_pois(content: JsonValue, file_path: &Display) -> Vec<POI> {
 fn build_poi(feature: &JsonValue) -> Option<POI> {
     let feature: Feature = match serde_json::from_str(&feature.to_string()) {
         Err(why) => {
-            println!("error parsing the feature {}", why);
+            warn!("error parsing the feature {}", why);
             return None;
         }
         Ok(value) => value,
@@ -137,8 +133,8 @@ fn reverse_geocode(point: &Option<Point>) -> Option<String> {
     };
     let latlong = match LatLon::new(latitude, longitude) {
         Err(why) => {
-            println!("error parsing the lat/long for Point: {:#?}", point);
-            println!("error: {}", why);
+            warn!("error parsing the lat/long for Point: {:#?}", point);
+            warn!("error: {}", why);
             return None;
         }
         Ok(value) => value,
