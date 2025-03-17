@@ -1,5 +1,3 @@
-extern crate postgres;
-
 use std::io::Write;
 
 use geo::Point;

@@ -23,3 +23,6 @@ url = "2.5.4"
 walkdir = "2.5.0"
 zip = "2.2.3"
 zip-extensions = "0.8.1"
+
+[dev-dependencies]
+tempdir = "0.3.7"
