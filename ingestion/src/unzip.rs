@@ -5,7 +5,7 @@ pub fn unzip(file_path: String, output_directory: String) {
     let mut archive = zip::ZipArchive::new(file).unwrap();
     archive
         .extract(&output_directory)
-        .expect(format!("couldn't extract {} to {}", file_path, output_directory).as_str());
+        .unwrap_or_else(|_| panic!("couldn't extract {} to {}", file_path, output_directory));
     println!(
         "{} successfully extracted to {}",
         file_path, output_directory

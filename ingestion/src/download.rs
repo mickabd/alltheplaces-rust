@@ -11,7 +11,7 @@ fn get_file_url() -> String {
 
     debug!("attempting to request URL: {}", atp_base_url);
     let request = reqwest::blocking::get(&atp_base_url)
-        .expect(format!("failed to connect to {}", atp_base_url).as_str());
+        .unwrap_or_else(|_| panic!("failed to connect to {}", atp_base_url));
 
     if !request.status().is_success() {
         warn!(

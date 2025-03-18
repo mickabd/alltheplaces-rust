@@ -39,7 +39,7 @@ fn build_pois(content: JsonValue, file_path: &Display) -> Vec<POI> {
     // this will either assign the value or stop the function and returns None
     let features = content["features"]
         .as_array()
-        .expect(format!("error when parsing the content for the file {}", file_path).as_str());
+        .unwrap_or_else(|| panic!("error when parsing the content for the file {}", file_path));
 
     for feature in features {
         let poi = match build_poi(feature) {
@@ -67,10 +67,7 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
         &Some(feature.properties.source_uri.clone()),
     );
     let point = parse_coordinates(&feature.geometry);
-    let country_code = match reverse_geocode(&point) {
-        Some(value) => value,
-        None => return None,
-    };
+    let country_code = reverse_geocode(&point)?;
 
     Some(POI {
         poi_name,
@@ -95,11 +92,8 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
 
 fn parse_poi_name(brand: &Option<String>, name: &Option<String>) -> Option<String> {
     match name {
-        Some(name) => return Some(name.clone()),
-        None => match brand {
-            Some(value) => Some(value.clone()),
-            None => None,
-        },
+        Some(name) => Some(name.clone()),
+        None => brand.clone(),
     }
 }
 
@@ -107,12 +101,10 @@ fn parse_url(website: &Option<String>, source_uri: &Option<String>) -> Option<St
     // Try website first, then fall back to source_uri
     let urls_to_try = [website, source_uri];
 
-    for url_opt in urls_to_try {
-        if let Some(url_str) = url_opt {
-            if let Ok(parsed_url) = Url::parse(url_str) {
-                if let Some(host) = parsed_url.host_str() {
-                    return Some(host.to_string());
-                }
+    for url_opt in urls_to_try.into_iter().flatten() {
+        if let Ok(parsed_url) = Url::parse(url_opt) {
+            if let Some(host) = parsed_url.host_str() {
+                return Some(host.to_string());
             }
         }
     }
@@ -120,10 +112,9 @@ fn parse_url(website: &Option<String>, source_uri: &Option<String>) -> Option<St
 }
 
 fn parse_coordinates(geometry: &Option<Geometry>) -> Option<Point> {
-    match geometry {
-        Some(value) => return Some(Point::new(value.coordinates[0], value.coordinates[1])),
-        None => None,
-    }
+    geometry
+        .as_ref()
+        .map(|value| Point::new(value.coordinates[0], value.coordinates[1]))
 }
 
 fn reverse_geocode(point: &Option<Point>) -> Option<String> {
@@ -141,10 +132,7 @@ fn reverse_geocode(point: &Option<Point>) -> Option<String> {
     };
     let ids = BOUNDARIES.ids(latlong);
     // We get the last one to get the biggest one.
-    match ids.last() {
-        None => return None,
-        Some(value) => Some(value.to_string()),
-    }
+    ids.last().map(|value| value.to_string())
 }
 
 #[cfg(test)]
