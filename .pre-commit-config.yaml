@@ -16,6 +16,14 @@ repos:
         pass_filenames: false
         entry: cargo clippy -p backend -- -D warnings
 
+      - id: test
+        name: cargo test
+        description: Check if all tests pass
+        language: system
+        types: [rust]
+        pass_filenames: false
+        entry: cargo test --all
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
