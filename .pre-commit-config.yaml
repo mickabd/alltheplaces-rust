@@ -8,8 +8,16 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: clippy
+        name: clippy
+        description: Check if all files pass clippy
+        language: system
+        types: [rust]
+        pass_filenames: false
+        entry: cargo clippy -p backend -- -D warnings
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.1.0
+    rev: v5.0.0
     hooks:
       - id: check-byte-order-marker
       - id: check-case-conflict

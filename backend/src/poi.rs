@@ -3,7 +3,7 @@ use serde::{Serialize, ser::SerializeStruct};
 use sqlx::FromRow;
 
 #[derive(Debug, FromRow)]
-pub struct POI {
+pub struct Poi {
     pub id: i32,
     pub spider_id: String,
     pub poi_name: Option<String>,
@@ -24,7 +24,7 @@ pub struct POI {
     pub street_name: Option<String>,
 }
 
-impl Serialize for POI {
+impl Serialize for Poi {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -44,8 +44,7 @@ impl Serialize for POI {
                 .point
                 .geometry
                 .as_ref()
-                .map(|value| value.to_wkt().ok())
-                .flatten(),
+                .and_then(|value| value.to_wkt().ok()),
         )?;
         state.serialize_field("city", &self.city)?;
         state.serialize_field("zipcode", &self.zipcode)?;

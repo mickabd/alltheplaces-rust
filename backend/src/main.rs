@@ -4,7 +4,7 @@ use actix_web::{
     web::{Data, Path},
 };
 use dotenv::dotenv;
-use poi::POI;
+use poi::Poi;
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 use std::env;
 
@@ -37,7 +37,7 @@ async fn main() -> Result<(), std::io::Error> {
 #[get("/poi/{id}")]
 async fn get_poi_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder {
     let id = path.into_inner();
-    match sqlx::query_as::<_, POI>("SELECT * FROM poi WHERE id = $1")
+    match sqlx::query_as::<_, Poi>("SELECT * FROM poi WHERE id = $1")
         .bind(id)
         .fetch_one(&state.db)
         .await
@@ -52,7 +52,7 @@ async fn get_poi_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder
 #[get("/poi/random/{count}")]
 async fn get_random_pois(state: Data<AppState>, path: Path<i64>) -> impl Responder {
     let id = path.into_inner();
-    match sqlx::query_as::<_, POI>("SELECT * FROM poi LIMIT $1")
+    match sqlx::query_as::<_, Poi>("SELECT * FROM poi LIMIT $1")
         .bind(id)
         .fetch_all(&state.db)
         .await
