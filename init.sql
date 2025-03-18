@@ -1,3 +1,12 @@
+CREATE TABLE brand (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    wikidata_id VARCHAR(255),
+    CONSTRAINT brand_name UNIQUE (name)
+);
+
+CREATE INDEX idx_brand_id ON brand (id);
+
 CREATE TABLE poi (
     id SERIAL PRIMARY KEY,
     spider_id VARCHAR(255) NOT NULL,
@@ -18,3 +27,5 @@ CREATE TABLE poi (
     street_name TEXT,
     country_code VARCHAR(15)
 );
+
+CREATE INDEX idx_poi_point ON poi USING GIST (point);

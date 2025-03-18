@@ -14,7 +14,7 @@ pub struct Properties {
     pub branch: Option<String>,
     pub name: Option<String>,
     pub brand: Option<String>,
-    #[serde(rename = "@brand:wikidata")]
+    #[serde(rename = "brand:wikidata")]
     pub brand_wikidata_id: Option<String>,
     pub operator: Option<String>,
     #[serde(rename = "operator:wikidata")]
@@ -84,4 +84,16 @@ pub struct POI {
     pub state: Option<String>,
     pub full_address: Option<String>,
     pub street_name: Option<String>,
+}
+
+#[derive(Serialize, Debug, Deserialize)]
+pub struct Brand {
+    pub name: String,
+    pub wikidata_id: Option<String>,
+}
+
+#[derive(Serialize, Debug, Deserialize)]
+pub struct BrandWithPOIs {
+    pub brand: Brand,
+    pub pois: Vec<POI>,
 }

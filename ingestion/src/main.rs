@@ -5,10 +5,10 @@ pub mod model;
 pub mod poi;
 pub mod unzip;
 
-use db::{get_client, ingest_into_db, truncate_table};
+use db::{get_client, ingest_brand_into_db, ingest_poi_into_db, truncate_table};
 use dotenv::dotenv;
 use download::download_atp_data;
-use log::debug;
+use log::{debug, info};
 use poi::extract_features;
 use std::env;
 use unzip::unzip;
@@ -43,10 +43,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let display = entry.path().display().to_string();
         let pois = extract_features(entry);
         match pois {
-            Some(value) => ingest_into_db(&mut client, value).unwrap(),
+            Some(value) => {
+                ingest_brand_into_db(&mut client, value.brand).unwrap();
+                ingest_poi_into_db(&mut client, value.pois).unwrap();
+            }
             None => continue,
         };
-        println!("File {} successfuly ingested", display);
+        info!("File {} successfuly ingested", display);
     }
     Ok(())
 }

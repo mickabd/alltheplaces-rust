@@ -1,10 +1,10 @@
 use crate::files::{is_file_empty, read_geojson};
-use crate::model::{Feature, Geometry, POI};
+use crate::model::{Brand, BrandWithPOIs, Feature, Geometry, POI};
 use country_boundaries::{BOUNDARIES_ODBL_360X180, CountryBoundaries, LatLon};
 use geo::Point;
 use geojson::JsonValue;
 use lazy_static::lazy_static;
-use log::warn;
+use log::{debug, error, warn};
 use std::path::Display;
 use url::Url;
 use walkdir::DirEntry;
@@ -15,10 +15,10 @@ lazy_static! {
             .expect("error while initializing the country boundaries");
 }
 
-pub fn extract_features(input_path: DirEntry) -> Option<Vec<POI>> {
+pub fn extract_features(input_path: DirEntry) -> Option<BrandWithPOIs> {
     let display = input_path.path().display();
     if is_file_empty(&input_path) {
-        println!("the file {} is empty, skipping it", display);
+        warn!("the file {} is empty, skipping it", display);
         return None;
     }
     let content = match read_geojson(&input_path) {
@@ -31,10 +31,53 @@ pub fn extract_features(input_path: DirEntry) -> Option<Vec<POI>> {
         }
         Ok(value) => value.to_json_value(),
     };
-    Some(build_pois(content, &display))
+    let brand = match extract_brand(&content) {
+        Some(value) => {
+            debug!("the file {} has a valid brand: {}", display, value.name);
+            value
+        }
+        None => {
+            warn!("the file {} has no valid brand, skipping it", display);
+            return None;
+        }
+    };
+
+    let pois = build_pois(&content, &display);
+    if pois.is_empty() {
+        warn!("the file {} has no valid POIs, skipping it", display);
+        return None;
+    } else {
+        debug!("the file {} has {} valid POIs", display, pois.len());
+    }
+    Some(BrandWithPOIs { brand, pois })
 }
 
-fn build_pois(content: JsonValue, file_path: &Display) -> Vec<POI> {
+fn extract_brand(content: &JsonValue) -> Option<Brand> {
+    let feature = content["features"].as_array()?.first()?;
+
+    let feature: Feature = serde_json::from_value(feature.clone()).ok()?;
+
+    match (
+        feature.properties.brand,
+        feature.properties.brand_wikidata_id,
+        feature.properties.operator,
+        feature.properties.operator_wikidata_id,
+    ) {
+        (Some(name), Some(wikidata_id), _, _) | (_, _, Some(name), Some(wikidata_id)) => {
+            Some(Brand {
+                name,
+                wikidata_id: Some(wikidata_id),
+            })
+        }
+        (Some(name), _, _, _) => Some(Brand {
+            name,
+            wikidata_id: None,
+        }),
+        _ => None,
+    }
+}
+
+fn build_pois(content: &JsonValue, file_path: &Display) -> Vec<POI> {
     let mut pois: Vec<POI> = vec![];
     // this will either assign the value or stop the function and returns None
     let features = content["features"]
@@ -56,7 +99,7 @@ fn build_pois(content: JsonValue, file_path: &Display) -> Vec<POI> {
 fn build_poi(feature: &JsonValue) -> Option<POI> {
     let feature: Feature = match serde_json::from_str(&feature.to_string()) {
         Err(why) => {
-            warn!("error parsing the feature {}", why);
+            error!("error parsing the feature {}: {}", why, feature);
             return None;
         }
         Ok(value) => value,
@@ -251,7 +294,7 @@ mod tests {
                 "brand": "Test Brand",
                 "website": "http://example.com",
                 "@source_uri": "http://example.com",
-                "@brand:wikidata": "Q12345",
+                "brand:wikidata": "Q12345",
                 "@spider": "spider_1",
                 "opening_hours": "24/7",
                 "phone": "+123456789",
