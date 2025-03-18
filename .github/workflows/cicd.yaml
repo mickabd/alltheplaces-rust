@@ -32,6 +32,20 @@ jobs:
         run: cargo fmt -- --check
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
+  tests:
+    name: stable / fmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Run cargo test
+        run: cargo tests --all
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
   clippy:
     name: ${{ matrix.toolchain }} / clippy
     runs-on: ubuntu-latest
