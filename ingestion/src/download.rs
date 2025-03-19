@@ -129,3 +129,67 @@ pub fn download_atp_data(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_file_url_success() {
+        let mock_body = r#"<!DOCTYPE html><html><body><a href="https://example.com/file.zip">Download GeoJSON</a>(575 MB)<br/><small>7,878,700 rows from3,694 spiders, updated 2025-03-17T14:47:33Z</small></body></html>"#;
+        let mut server = mockito::Server::new();
+        let url = server.url();
+        let _mock = server
+            .mock("GET", "/")
+            .with_status(200)
+            .with_body(mock_body)
+            .create();
+
+        let result = get_file_url(&url);
+        assert_eq!(result, "https://example.com/file.zip");
+    }
+
+    #[test]
+    #[should_panic(expected = "failed to connect to")]
+    fn test_get_file_url_connection_failure() {
+        let url = "http://nonexistent.url";
+        get_file_url(url);
+    }
+
+    #[test]
+    #[should_panic(expected = "failed to get the latest URL download link")]
+    fn test_get_file_url_non_success_status() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+        let _m = server.mock("GET", "/").with_status(404).create();
+        get_file_url(&url);
+    }
+
+    #[test]
+    #[should_panic(expected = "could not find the latest URL download link!")]
+    fn test_get_file_url_no_url_in_body() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+        let mock_body = r#"<html><body>No links here</body></html>"#;
+        let _m = server
+            .mock("GET", "/")
+            .with_status(200)
+            .with_body(mock_body)
+            .create();
+
+        get_file_url(&url);
+    }
+
+    #[test]
+    #[should_panic(expected = "could not find the latest URL download link!")]
+    fn test_get_file_url_invalid_body() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+        let _m = server
+            .mock("GET", "/")
+            .with_status(200)
+            .with_body("")
+            .create();
+        get_file_url(&url);
+    }
+}

@@ -25,4 +25,5 @@ zip = "2.2.3"
 zip-extensions = "0.8.1"
 
 [dev-dependencies]
+mockito = "1.7.0"
 tempdir = "0.3.7"
