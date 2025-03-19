@@ -51,9 +51,12 @@ async fn get_poi_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder
 
 #[get("/poi/random/{count}")]
 async fn get_random_pois(state: Data<AppState>, path: Path<i64>) -> impl Responder {
-    let id = path.into_inner();
+    let limit = path.into_inner();
+    if limit > 15 {
+        return HttpResponse::BadRequest().body("Limit must be less than 10");
+    }
     match sqlx::query_as::<_, Poi>("SELECT * FROM poi LIMIT $1")
-        .bind(id)
+        .bind(limit)
         .fetch_all(&state.db)
         .await
     {

@@ -69,8 +69,6 @@ pub struct Feature {
 pub struct POI {
     pub spider_id: String,
     pub poi_name: Option<String>,
-    pub brand: Option<String>,
-    pub brand_wikidata_id: Option<String>,
     pub website: Option<String>,
     pub opening_hours: Option<String>,
     pub phone: Option<String>,

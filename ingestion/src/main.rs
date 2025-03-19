@@ -44,8 +44,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let pois = extract_features(entry);
         match pois {
             Some(value) => {
-                ingest_brand_into_db(&mut client, value.brand).unwrap();
-                ingest_poi_into_db(&mut client, value.pois).unwrap();
+                let brand_id = ingest_brand_into_db(&mut client, value.brand).unwrap();
+                ingest_poi_into_db(&mut client, value.pois, brand_id).unwrap();
             }
             None => continue,
         };

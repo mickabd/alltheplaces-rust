@@ -11,8 +11,7 @@ CREATE TABLE poi (
     id SERIAL PRIMARY KEY,
     spider_id VARCHAR(255) NOT NULL,
     poi_name TEXT,
-    brand VARCHAR(255),
-    brand_wikidata_id VARCHAR(255),
+    brand_id INTEGER REFERENCES brand(id),
     website VARCHAR(255),
     opening_hours TEXT,
     phone VARCHAR(255),
@@ -29,3 +28,4 @@ CREATE TABLE poi (
 );
 
 CREATE INDEX idx_poi_point ON poi USING GIST (point);
+CREATE INDEX idx_poi_brand_id ON poi (brand_id);

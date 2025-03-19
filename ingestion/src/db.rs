@@ -34,8 +34,8 @@ pub fn get_client(
 
 pub fn truncate_table(client: &mut Client) -> Result<(), Box<dyn std::error::Error>> {
     debug!("attempting to truncate poi table");
-    let truncate_brand = "truncate table brand;";
-    let truncate_poi = "truncate table poi;";
+    let truncate_brand = "truncate table brand cascade;";
+    let truncate_poi = "truncate table poi cascade;";
 
     let mut transaction = client.transaction()?;
 
@@ -55,14 +55,14 @@ pub fn truncate_table(client: &mut Client) -> Result<(), Box<dyn std::error::Err
 pub fn ingest_poi_into_db(
     client: &mut Client,
     pois: Vec<POI>,
+    brand_id: i32,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut transaction = client.transaction()?;
     let query = "
     COPY poi (
         spider_id,
         poi_name,
-        brand,
-        brand_wikidata_id,
+        brand_id,
         website,
         opening_hours,
         phone,
@@ -90,9 +90,7 @@ pub fn ingest_poi_into_db(
         buffer.push('\t');
         buffer.push_str(&escape_field(&poi.poi_name.unwrap_or_default()));
         buffer.push('\t');
-        buffer.push_str(&escape_field(&poi.brand.unwrap_or_default()));
-        buffer.push('\t');
-        buffer.push_str(&escape_field(&poi.brand_wikidata_id.unwrap_or_default()));
+        buffer.push_str(&escape_field(&brand_id.to_string()));
         buffer.push('\t');
         buffer.push_str(&escape_field(&poi.website.unwrap_or_default()));
         buffer.push('\t');
@@ -159,11 +157,15 @@ fn escape_field(field: &str) -> String {
 pub fn ingest_brand_into_db(
     client: &mut Client,
     brand: Brand,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let query =
-        "INSERT INTO brand (name, wikidata_id) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING";
+) -> Result<i32, Box<dyn std::error::Error>> {
+    let query = "
+        INSERT INTO brand (name, wikidata_id)
+        VALUES ($1, $2)
+        ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+        RETURNING id";
     let mut transaction = client.transaction()?;
-    transaction.execute(query, &[&brand.name, &brand.wikidata_id])?;
+    let row = transaction.query_one(query, &[&brand.name, &brand.wikidata_id])?;
+    let id: i32 = row.get("id");
     transaction.commit()?;
-    Ok(())
+    Ok(id)
 }

@@ -114,9 +114,7 @@ fn build_poi(feature: &JsonValue) -> Option<POI> {
 
     Some(POI {
         poi_name,
-        brand: feature.properties.brand,
         website,
-        brand_wikidata_id: feature.properties.brand_wikidata_id,
         spider_id: feature.properties.spider_id,
         opening_hours: feature.properties.opening_hours,
         phone: feature.properties.phone,
@@ -313,9 +311,7 @@ mod tests {
         assert!(result.is_some());
         let poi = result.unwrap();
         assert_eq!(poi.poi_name, Some("Test POI".to_string()));
-        assert_eq!(poi.brand, Some("Test Brand".to_string()));
         assert_eq!(poi.website, Some("example.com".to_string()));
-        assert_eq!(poi.brand_wikidata_id, Some("Q12345".to_string()));
         assert_eq!(poi.spider_id, "spider_1".to_string());
         assert_eq!(poi.opening_hours, Some("24/7".to_string()));
         assert_eq!(poi.phone, Some("+123456789".to_string()));
