@@ -7,12 +7,14 @@ pub mod unzip;
 
 use db::{get_client, ingest_brand_into_db, ingest_poi_into_db, truncate_table};
 use dotenv::dotenv;
-use download::download_atp_data;
+use download::{download_atp_data, get_file_url};
 use log::{debug, info};
 use poi::extract_features;
 use std::env;
 use unzip::unzip;
 use walkdir::WalkDir;
+
+const ATP_BASE_URL: &str = "https://data.alltheplaces.xyz/runs/latest/info_embed.html";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
@@ -31,7 +33,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let unzip_directory = String::from("temp/");
     let files_directory = String::from("temp/output/");
 
-    download_atp_data(&output_path)?;
+    let url = get_file_url(ATP_BASE_URL);
+    download_atp_data(&output_path, &url)?;
     unzip(output_path, unzip_directory);
     truncate_table(&mut client)?;
     for entry in WalkDir::new(files_directory)

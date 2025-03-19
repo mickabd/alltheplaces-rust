@@ -5,49 +5,49 @@ use std::{fs::File, path::Path, time::Duration};
 use log::{debug, error, info, warn};
 use regex::Regex;
 
-fn get_file_url() -> String {
+pub fn get_file_url(url: &str) -> String {
     debug!("getting the latest URL download link");
-    let atp_base_url = String::from("https://data.alltheplaces.xyz/runs/latest/info_embed.html");
+    debug!("attempting to request URL: {}", url);
 
-    debug!("attempting to request URL: {}", atp_base_url);
-    let request = reqwest::blocking::get(&atp_base_url)
-        .unwrap_or_else(|_| panic!("failed to connect to {}", atp_base_url));
+    // Make the HTTP request
+    let response = reqwest::blocking::get(url)
+        .unwrap_or_else(|e| panic!("failed to connect to {}: {}", url, e));
 
-    if !request.status().is_success() {
+    // Check status code
+    if !response.status().is_success() {
         warn!(
             "request returned non-success status code: {}",
-            request.status()
+            response.status()
         );
+        panic!("failed to get the latest URL download link!");
     }
 
     debug!("parsing response body from request");
-    let body = request.text().expect("failed to parse response body");
+    let body = response.text().expect("failed to parse response body");
 
     debug!("looking for URL pattern in response body");
     // unwrap is ok because it's a hardcoded value
     let re = Regex::new("href=[\"\'](https?://[^\"\']+?)[\"\']").unwrap();
 
-    let captures = match re.captures(&body) {
-        Some(c) => c,
+    // Find the URL in the response body
+    match re.captures(&body) {
+        Some(captures) => {
+            let extracted_url = captures.get(1).expect("capture group not found").as_str();
+
+            info!("got the latest URL download link: {}", extracted_url);
+            extracted_url.to_string()
+        }
         None => {
             error!("no URL pattern found in response body");
             panic!("could not find the latest URL download link!");
         }
-    };
-
-    // The first capture is always the full string containing the match
-    let url = captures.get(1).expect("capture group not found").as_str();
-    info!("got the latest URL download link: {}", url);
-
-    if !url.starts_with("https://") && !url.starts_with("http://") {
-        warn!("URL doesn't start with http(s)://: {}", url);
     }
-
-    url.to_string()
 }
 
-pub fn download_atp_data(output_path: &String) -> Result<(), Box<dyn std::error::Error>> {
-    let url = get_file_url();
+pub fn download_atp_data(
+    output_path: &str,
+    file_url: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new(&output_path);
 
     debug!(
@@ -79,36 +79,43 @@ pub fn download_atp_data(output_path: &String) -> Result<(), Box<dyn std::error:
             e
         })?;
 
-    debug!("preparing request to download from {}", url);
-    let req = client.get(&url).build().map_err(|e| {
-        error!("failed to build request for {}: {}", url, e);
+    debug!("preparing request to download from {}", file_url);
+    let req = client.get(file_url).build().map_err(|e| {
+        error!("failed to build request for {}: {}", file_url, e);
         e
     })?;
 
-    debug!("downloading zip file from {}", url);
+    debug!("downloading zip file from {}", file_url);
     let resp = match client.execute(req) {
         Ok(response) => {
             if !response.status().is_success() {
                 let status = response.status();
-                warn!("received non-success status code {} from {}", status, url);
+                warn!(
+                    "received non-success status code {} from {}",
+                    status, file_url
+                );
                 return Err(format!("HTTP error: status code {}", status).into());
             }
 
             match response.bytes() {
                 Ok(bytes) => bytes,
                 Err(e) => {
-                    error!("failed to read response body from {}: {}", url, e);
+                    error!("failed to read response body from {}: {}", file_url, e);
                     return Err(e.into());
                 }
             }
         }
         Err(e) => {
-            error!("request to {} failed: {}", url, e);
+            error!("request to {} failed: {}", file_url, e);
             return Err(e.into());
         }
     };
 
-    info!("successfully downloaded {} bytes from {}", resp.len(), url);
+    info!(
+        "successfully downloaded {} bytes from {}",
+        resp.len(),
+        file_url
+    );
 
     debug!("writing downloaded data to {}", output_path);
     match file.write_all(&resp) {
