@@ -7,8 +7,7 @@ pub struct Poi {
     pub id: i32,
     pub spider_id: String,
     pub poi_name: Option<String>,
-    pub brand: Option<String>,
-    pub brand_wikidata_id: Option<String>,
+    pub brand_id: i32,
     pub website: Option<String>,
     pub opening_hours: Option<String>,
     pub phone: Option<String>,
@@ -33,8 +32,7 @@ impl Serialize for Poi {
         state.serialize_field("id", &self.id)?;
         state.serialize_field("spider_id", &self.spider_id)?;
         state.serialize_field("poi_name", &self.poi_name)?;
-        state.serialize_field("brand", &self.brand)?;
-        state.serialize_field("brand_wikidata_id", &self.brand_wikidata_id)?;
+        state.serialize_field("brand_id", &self.brand_id)?;
         state.serialize_field("website", &self.website)?;
         state.serialize_field("opening_hours", &self.opening_hours)?;
         state.serialize_field("phone", &self.phone)?;
@@ -57,4 +55,11 @@ impl Serialize for Poi {
         state.serialize_field("street_name", &self.street_name)?;
         state.end()
     }
+}
+
+#[derive(Serialize, Debug, FromRow)]
+pub struct Brand {
+    pub id: i32,
+    pub name: String,
+    pub wikidata_id: Option<String>,
 }
