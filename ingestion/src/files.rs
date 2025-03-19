@@ -1,4 +1,5 @@
 use geojson::GeoJson;
+use log::error;
 use std::error::Error;
 use std::fs::{self, File};
 
@@ -11,7 +12,7 @@ pub fn is_file_empty(entry: &DirEntry) -> bool {
     let display = entry.path().display();
     let metadata = match entry.metadata() {
         Err(why) => {
-            println!("error reading metadata for {}, {}", display, why);
+            error!("error reading metadata for {}, {}", display, why);
             return true;
         }
         Ok(value) => value,
@@ -21,7 +22,6 @@ pub fn is_file_empty(entry: &DirEntry) -> bool {
 
 pub fn read_geojson(entry: &DirEntry) -> Result<GeoJson, Box<dyn Error>> {
     let display = entry.path().display();
-    // println!("trying to parse {} into a geojson", display);
 
     let string_value = match fs::read_to_string(display.to_string()) {
         Err(why) => return Err(why.into()),
@@ -29,10 +29,7 @@ pub fn read_geojson(entry: &DirEntry) -> Result<GeoJson, Box<dyn Error>> {
     };
     match serde_json::from_str(string_value.as_str()) {
         Err(why) => Err(why.into()),
-        Ok(value) => {
-            // println!("successfully parsed {} into a geojson", display);
-            Ok(value)
-        }
+        Ok(value) => Ok(value),
     }
 }
 
