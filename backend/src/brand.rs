@@ -2,20 +2,11 @@ use actix_web::{
     HttpResponse, Responder, get,
     web::{Data, Path},
 };
-use serde::Serialize;
-use sqlx::FromRow;
 
-use crate::AppState;
-
-#[derive(Serialize, Debug, FromRow)]
-pub struct Brand {
-    pub id: i32,
-    pub name: String,
-    pub wikidata_id: Option<String>,
-}
+use crate::{AppState, model::Brand};
 
 #[get("/brand/{id}")]
-async fn get_brand_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder {
+pub async fn get_brand_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder {
     let id = path.into_inner();
     match sqlx::query_as::<_, Brand>("SELECT * FROM brand WHERE id = $1")
         .bind(id)
