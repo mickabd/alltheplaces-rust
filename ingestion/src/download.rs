@@ -48,29 +48,16 @@ pub fn download_atp_data(
     output_path: &str,
     file_url: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let path = Path::new(&output_path);
-
-    debug!(
-        "creating directory at {}",
-        path.parent().unwrap_or_else(|| Path::new("")).display()
-    );
-
+    let path = Path::new(output_path);
     if let Some(parent) = path.parent() {
+        debug!("creating directory at {}", parent.display());
         fs::create_dir_all(parent).map_err(|e| {
             error!("failed to create directory {}: {}", parent.display(), e);
             e
         })?;
     }
 
-    debug!("creating output file at {}", output_path);
-    let mut file = match File::create(path) {
-        Ok(f) => f,
-        Err(e) => {
-            error!("failed to create file at {}: {}", output_path, e);
-            return Err(e.into());
-        }
-    };
-
+    debug!("building HTTP client");
     let client = reqwest::blocking::Client::builder()
         .timeout(Some(Duration::new(120, 0)))
         .build()
@@ -79,55 +66,45 @@ pub fn download_atp_data(
             e
         })?;
 
-    debug!("preparing request to download from {}", file_url);
-    let req = client.get(file_url).build().map_err(|e| {
-        error!("failed to build request for {}: {}", file_url, e);
+    debug!("downloading zip file from {}", file_url);
+    let resp = client.get(file_url).send().map_err(|e| {
+        error!("request to {} failed: {}", file_url, e);
         e
     })?;
 
-    debug!("downloading zip file from {}", file_url);
-    let resp = match client.execute(req) {
-        Ok(response) => {
-            if !response.status().is_success() {
-                let status = response.status();
-                warn!(
-                    "received non-success status code {} from {}",
-                    status, file_url
-                );
-                return Err(format!("HTTP error: status code {}", status).into());
-            }
+    if !resp.status().is_success() {
+        let status = resp.status();
+        error!(
+            "received non-success status code {} from {}",
+            status, file_url
+        );
+        return Err(format!("HTTP error: status code {}", status).into());
+    }
 
-            match response.bytes() {
-                Ok(bytes) => bytes,
-                Err(e) => {
-                    error!("failed to read response body from {}: {}", file_url, e);
-                    return Err(e.into());
-                }
-            }
-        }
-        Err(e) => {
-            error!("request to {} failed: {}", file_url, e);
-            return Err(e.into());
-        }
-    };
+    let bytes = resp.bytes().map_err(|e| {
+        error!("failed to read response body from {}: {}", file_url, e);
+        e
+    })?;
 
     info!(
         "successfully downloaded {} bytes from {}",
-        resp.len(),
+        bytes.len(),
         file_url
     );
 
-    debug!("writing downloaded data to {}", output_path);
-    match file.write_all(&resp) {
-        Ok(_) => {
-            info!("successfully wrote file to {}", output_path);
-            Ok(())
-        }
-        Err(e) => {
-            error!("failed to write data to {}: {}", output_path, e);
-            Err(e.into())
-        }
-    }
+    debug!("creating and writing to output file at {}", output_path);
+    let mut file = File::create(path).map_err(|e| {
+        error!("failed to create file at {}: {}", output_path, e);
+        e
+    })?;
+
+    file.write_all(&bytes).map_err(|e| {
+        error!("failed to write data to {}: {}", output_path, e);
+        e
+    })?;
+
+    info!("successfully wrote file to {}", output_path);
+    Ok(())
 }
 
 #[cfg(test)]
