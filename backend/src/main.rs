@@ -4,17 +4,26 @@ mod poi;
 
 use actix_web::{App, HttpServer, web};
 use dotenv::dotenv;
+use log::{debug, info};
 use model::AppState;
 use std::env;
 
 #[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {
+    if env::var("RUST_LOG").is_err() {
+        unsafe {
+            env::set_var("RUST_LOG", "info");
+        }
+    }
+    env_logger::init();
+    debug!("Logger Initialized");
+    debug!("Reading environment variables");
     dotenv().ok();
+    debug!("Creating app state");
     let db_url = env::var("DBURL").expect("DBURL must be set!");
     let app_state = AppState::init(db_url.clone()).await;
     let app_data = web::Data::new(app_state);
-
-    println!("Starting server...");
+    info!("Starting server...");
     HttpServer::new(move || {
         App::new()
             .app_data(app_data.clone())
