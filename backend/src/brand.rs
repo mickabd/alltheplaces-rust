@@ -6,7 +6,7 @@ use actix_web::{
 use crate::{AppState, model::Brand};
 
 #[get("/brand/{id}")]
-pub async fn get_brand_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder {
+async fn get_brand_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder {
     let id = path.into_inner();
     match sqlx::query_as::<_, Brand>("SELECT * FROM brand WHERE id = $1")
         .bind(id)
