@@ -2,17 +2,8 @@ use actix_web::{
     HttpResponse, Responder, get,
     web::{Data, Path},
 };
-use serde::Serialize;
-use sqlx::FromRow;
 
-use crate::AppState;
-
-#[derive(Serialize, Debug, FromRow)]
-pub struct Brand {
-    pub id: i32,
-    pub name: String,
-    pub wikidata_id: Option<String>,
-}
+use crate::{AppState, model::Brand};
 
 #[get("/brand/{id}")]
 async fn get_brand_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder {
