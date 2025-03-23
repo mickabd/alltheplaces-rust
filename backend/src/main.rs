@@ -10,6 +10,11 @@ use std::env;
 
 #[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {
+    if env::var("RUST_LOG").is_err() {
+        unsafe {
+            env::set_var("RUST_LOG", "info");
+        }
+    }
     env_logger::init();
     debug!("Logger Initialized");
     debug!("Reading environment variables");
