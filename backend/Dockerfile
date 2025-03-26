@@ -16,16 +16,14 @@ RUN apk add --no-cache \
 RUN cargo new --bin alltheplaces
 WORKDIR /alltheplaces
 
+COPY Cargo.lock ./
 COPY backend/Cargo.toml Cargo.toml
-COPY Cargo.lock Cargo.lock
 
-# Build dependencies to reuse cached layers
-# Use the RUSTFLAGS to statically link OpenSSL
 RUN RUSTFLAGS="-C target-feature=-crt-static" cargo build --release
 
-# Build for release
-RUN --mount=type=bind,source=backend/src,target=src \
-    # Use the RUSTFLAGS to statically link OpenSSL
+COPY backend/src src
+
+RUN touch src/main.rs && \
     RUSTFLAGS="-C target-feature=-crt-static" cargo build --release
 
 # Use a clean Alpine image for the final stage
