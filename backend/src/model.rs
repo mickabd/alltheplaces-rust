@@ -3,18 +3,24 @@ use serde::{Serialize, ser::SerializeStruct};
 use sqlx::FromRow;
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 
-pub struct AppState {
-    pub db: Pool<Postgres>,
+pub struct DatabaseState {
+    pub poi_db: Pool<Postgres>,
+    pub brand_db: Pool<Postgres>,
 }
 
-impl AppState {
-    pub async fn init(db_url: String) -> AppState {
-        AppState {
-            db: PgPoolOptions::new()
-                .max_connections(5)
-                .connect(&db_url)
-                .await
-                .expect("Error building a connection pool"),
+async fn create_pool(db_url: &str) -> Pool<Postgres> {
+    PgPoolOptions::new()
+        .max_connections(5)
+        .connect(db_url)
+        .await
+        .expect("Error building a connection pool")
+}
+
+impl DatabaseState {
+    pub async fn init(poi_db_url: &str, brand_db_url: &str) -> DatabaseState {
+        DatabaseState {
+            poi_db: create_pool(poi_db_url).await,
+            brand_db: create_pool(brand_db_url).await,
         }
     }
 }

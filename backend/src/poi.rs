@@ -1,4 +1,4 @@
-use crate::{AppState, model::Poi};
+use crate::model::{DatabaseState, Poi};
 use actix_web::{
     HttpResponse, Responder, get,
     web::{Data, Path},
@@ -6,13 +6,13 @@ use actix_web::{
 use log::{error, info, warn};
 
 #[get("/poi/{id}")]
-async fn get_poi_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder {
+async fn get_poi_by_id(state: Data<DatabaseState>, path: Path<i32>) -> impl Responder {
     let id = path.into_inner();
     info!("Received request to get POI by id: {}", id);
 
     match sqlx::query_as::<_, Poi>("SELECT * FROM poi WHERE id = $1")
         .bind(id)
-        .fetch_one(&state.db)
+        .fetch_one(&state.poi_db)
         .await
     {
         Err(why) => {
@@ -27,7 +27,7 @@ async fn get_poi_by_id(state: Data<AppState>, path: Path<i32>) -> impl Responder
 }
 
 #[get("/poi/random/{count}")]
-async fn get_random_pois(state: Data<AppState>, path: Path<i64>) -> impl Responder {
+async fn get_random_pois(state: Data<DatabaseState>, path: Path<i64>) -> impl Responder {
     let limit = path.into_inner();
     let max_limit = 15;
 
@@ -43,7 +43,7 @@ async fn get_random_pois(state: Data<AppState>, path: Path<i64>) -> impl Respond
 
     match sqlx::query_as::<_, Poi>("SELECT * FROM poi LIMIT $1")
         .bind(limit)
-        .fetch_all(&state.db)
+        .fetch_all(&state.poi_db)
         .await
     {
         Err(why) => {
@@ -58,7 +58,7 @@ async fn get_random_pois(state: Data<AppState>, path: Path<i64>) -> impl Respond
 }
 
 #[get("/poi/{brand_id}/count")]
-async fn get_poi_count_for_brand_id(state: Data<AppState>, path: Path<i64>) -> impl Responder {
+async fn get_poi_count_for_brand_id(state: Data<DatabaseState>, path: Path<i64>) -> impl Responder {
     let brand_id = path.into_inner();
     info!(
         "Received request to get POI count for brand_id: {}",
@@ -67,7 +67,7 @@ async fn get_poi_count_for_brand_id(state: Data<AppState>, path: Path<i64>) -> i
 
     match sqlx::query_scalar::<_, i64>("SELECT COUNT(1) FROM poi WHERE brand_id = $1")
         .bind(brand_id)
-        .fetch_one(&state.db)
+        .fetch_one(&state.poi_db)
         .await
     {
         Err(why) => {

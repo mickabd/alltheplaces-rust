@@ -35,22 +35,22 @@ services:
       - ./migrations/brand/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5433:5432"
-  # backend:
-  #   build:
-  #     context: .
-  #     dockerfile: backend/Dockerfile
-  #   platform: linux/amd64
-  #   #restart: always
-  #   depends_on:
-  #     postgres_poi:
-  #       condition: service_healthy
-  #     postgres_brand:
-  #       condition: service_healthy
-  #   environment:
-  #     POSTGRES_POI_DB_URL: postgres://admin:example@postgres_poi/poi
-  #     POSTGRES_BRAND_DB_URL: postgres://admin:example@postgres_brand/brand
-  #   ports:
-  #     - "8080:8080"
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    platform: linux/amd64
+    #restart: always
+    depends_on:
+      postgres_poi:
+        condition: service_healthy
+      postgres_brand:
+        condition: service_healthy
+    environment:
+      POSTGRES_POI_DB_URL: postgres://admin:example@postgres_poi/poi
+      POSTGRES_BRAND_DB_URL: postgres://admin:example@postgres_brand/brand
+    ports:
+      - "8080:8080"
 volumes:
   pg_data_poi:
   pg_data_brand:

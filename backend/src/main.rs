@@ -4,7 +4,7 @@ mod poi;
 
 use actix_web::{App, HttpServer, web};
 use log::{debug, info};
-use model::AppState;
+use model::DatabaseState;
 use std::env;
 
 #[actix_web::main]
@@ -18,8 +18,9 @@ async fn main() -> Result<(), std::io::Error> {
     debug!("Logger Initialized");
     debug!("Reading environment variables");
     debug!("Creating app state");
-    let db_url = env::var("DBURL").expect("DBURL must be set!");
-    let app_state = AppState::init(db_url.clone()).await;
+    let poi_db_url = env::var("POSTGRES_POI_DB_URL").expect("DBURL must be set!");
+    let brand_db_url = env::var("POSTGRES_BRAND_DB_URL").expect("DBURL must be set!");
+    let app_state = DatabaseState::init(&poi_db_url, &brand_db_url).await;
     let app_data = web::Data::new(app_state);
     info!("Starting server...");
     HttpServer::new(move || {
