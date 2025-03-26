@@ -6,23 +6,12 @@ use postgres::{Client, NoTls};
 
 use crate::model::{Brand, POI};
 
-pub fn get_client(
-    host: String,
-    user: String,
-    password: String,
-    port: String,
-    dbname: String,
-) -> Client {
-    debug!("attempting to connect to database at {}:{}", host, port);
+pub fn get_client(url: &str) -> Client {
+    debug!("attempting to connect to database at {}", url);
 
-    let connection_string = format!(
-        "host={} user={} password={} port={} dbname={}",
-        host, user, password, port, dbname
-    );
-
-    match Client::connect(connection_string.as_str(), NoTls) {
+    match Client::connect(url, NoTls) {
         Ok(client) => {
-            info!("successfully connected to database '{}'", dbname);
+            info!("successfully connected to database '{}'", url);
             client
         }
         Err(err) => {
@@ -32,23 +21,19 @@ pub fn get_client(
     }
 }
 
-pub fn truncate_table(client: &mut Client) -> Result<(), Box<dyn std::error::Error>> {
+pub fn truncate_table(client: &mut Client, table: &str) -> Result<(), Box<dyn std::error::Error>> {
     debug!("attempting to truncate poi table");
-    let truncate_brand = "truncate table brand cascade;";
-    let truncate_poi = "truncate table poi cascade;";
+    let truncate = format!("truncate table {};", table);
 
     let mut transaction = client.transaction()?;
 
-    debug!("executing query: {}", truncate_brand);
-    transaction.execute(truncate_brand, &[])?;
+    debug!("executing query: {}", truncate);
+    transaction.execute(&truncate, &[])?;
 
-    debug!("executing query: {}", truncate_poi);
-    transaction.execute(truncate_poi, &[])?;
-
-    debug!("committing transaction");
+    debug!("committing transaction: {}", truncate);
     transaction.commit()?;
 
-    info!("successfully truncated poi table");
+    info!("successfully truncated {} table", table);
     Ok(())
 }
 

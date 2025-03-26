@@ -3,7 +3,6 @@ mod model;
 mod poi;
 
 use actix_web::{App, HttpServer, web};
-use dotenv::dotenv;
 use log::{debug, info};
 use model::AppState;
 use std::env;
@@ -18,7 +17,6 @@ async fn main() -> Result<(), std::io::Error> {
     env_logger::init();
     debug!("Logger Initialized");
     debug!("Reading environment variables");
-    dotenv().ok();
     debug!("Creating app state");
     let db_url = env::var("DBURL").expect("DBURL must be set!");
     let app_state = AppState::init(db_url.clone()).await;

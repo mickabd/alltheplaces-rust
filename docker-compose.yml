@@ -1,5 +1,5 @@
 services:
-  postgres:
+  postgres_poi:
     image: postgis/postgis:17-3.5-alpine
     platform: linux/amd64
     restart: always
@@ -13,22 +13,44 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - pg_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - pg_data_poi:/var/lib/postgresql/data
+      - ./migrations/poi/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
-  backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+  postgres_brand:
+    image: postgis/postgis:17-3.5-alpine
     platform: linux/amd64
-    #restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
+    restart: always
     environment:
-      DBURL: postgres://admin:example@postgres/poi
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: brand
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d brand"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - pg_data_brand:/var/lib/postgresql/data
+      - ./migrations/brand/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "8080:8080"
+      - "5433:5432"
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: backend/Dockerfile
+  #   platform: linux/amd64
+  #   #restart: always
+  #   depends_on:
+  #     postgres_poi:
+  #       condition: service_healthy
+  #     postgres_brand:
+  #       condition: service_healthy
+  #   environment:
+  #     POSTGRES_POI_DB_URL: postgres://admin:example@postgres_poi/poi
+  #     POSTGRES_BRAND_DB_URL: postgres://admin:example@postgres_brand/brand
+  #   ports:
+  #     - "8080:8080"
 volumes:
-  pg_data:
+  pg_data_poi:
+  pg_data_brand:
